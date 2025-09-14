@@ -37,9 +37,6 @@ Python 3.8+
 A free Groq API key from Groq Console.
 2. Clone the Repository:
 
-git clone https://github.com/your-username/financial_tool.git
-cd financial_tool
-
 3. Install Dependencies:
 Create a requirements.txt file with the following content:
 
