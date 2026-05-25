@@ -1,0 +1,19 @@
+APP_VERSION = "0.1.0"
+
+SUPPORTED_MARKETS = ["INDIA"]
+
+SUPPORTED_INSTRUMENT_TYPES = [
+    "ETF",
+    "MUTUAL_FUND",
+    "STOCK",
+]
+
+SUPPORTED_UPLOAD_TYPES = [
+    "BROKER_STATEMENT",
+    "CAS",
+    "CSV",
+    "EXCEL",
+    "MANUAL",
+]
+
+DEFAULT_API_PREFIX = "/api/v1"
