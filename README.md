@@ -18,6 +18,7 @@ The tool will help users make disciplined long-term investment decisions by comb
 - Rule-based recommendation scoring
 - Beginner-friendly AI explanations
 
+
 ## Important Disclaimer
 
 This application is for educational and decision-support purposes only. It does not provide guaranteed financial advice. Past performance does not guarantee future returns. All investments are subject to market risk.
