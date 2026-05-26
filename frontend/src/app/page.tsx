@@ -2,7 +2,6 @@ import { ProviderHealthList } from "@/components/dashboard/provider-health-list"
 import { StatusCard } from "@/components/dashboard/status-card";
 import { getBackendHealth, getProviderHealth } from "@/lib/api";
 import Link from "next/link";
-
 export default async function Home() {
   try {
     const [health, providerHealth] = await Promise.all([
@@ -25,14 +24,28 @@ export default async function Home() {
               for Indian stocks, ETFs, and mutual funds.
             </p>
 
-            <div className="mt-6">
-            <Link
-              href="/profile"
-              className="inline-flex rounded-lg bg-emerald-500 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-400"
-            >
-              Set up investor profile
-            </Link>
-          </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/profile"
+                className="inline-flex rounded-lg bg-emerald-500 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-400"
+              >
+                Set up investor profile
+              </Link>
+
+              <Link
+                href="/portfolio"
+                className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
+              >
+                Manage portfolio
+              </Link>
+
+              <Link
+                href="/instruments"
+                className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
+              >
+                Manage instruments
+              </Link>
+            </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <StatusCard
