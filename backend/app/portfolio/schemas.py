@@ -4,6 +4,12 @@ from app.portfolio.enums import HoldingInstrumentType
 
 
 class PortfolioHoldingCreate(BaseModel):
+
+    instrument_id: str | None = Field(
+        default=None,
+        description="Optional linked instrument ID",
+    )
+
     instrument_name: str = Field(
         ...,
         min_length=2,
