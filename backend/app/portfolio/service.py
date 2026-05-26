@@ -6,6 +6,10 @@ from app.portfolio.schemas import (
     PortfolioSummaryResponse,
 )
 
+from sqlalchemy.orm import Session
+from app.db import SessionLocal
+from app.portfolio.models import PortfolioHolding as DBHolding
+
 
 _HOLDINGS_STORE: dict[str, PortfolioHoldingResponse] = {}
 
@@ -102,26 +106,67 @@ def _get_concentration_warning(
 def create_holding(
     holding_data: PortfolioHoldingCreate,
 ) -> PortfolioHoldingResponse:
-    holding_id = str(uuid4())
+    db: Session = SessionLocal()
 
-    gain_loss, gain_loss_percent = _calculate_gain_loss(
+    holding = DBHolding(
+        instrument_id=holding_data.instrument_id,
+        instrument_name=holding_data.instrument_name,
+        instrument_type=holding_data.instrument_type.value,
+        quantity=holding_data.quantity,
+        average_cost=holding_data.average_cost,
         invested_amount=holding_data.invested_amount,
         current_value=holding_data.current_value,
     )
 
-    holding = PortfolioHoldingResponse(
-        holding_id=holding_id,
+    db.add(holding)
+    db.commit()
+    db.refresh(holding)
+
+    db.close()
+
+    gain_loss, gain_loss_percent = _calculate_gain_loss(
+        holding_data.invested_amount,
+        holding_data.current_value,
+    )
+
+    return PortfolioHoldingResponse(
+        holding_id=str(holding.id),
         gain_loss=gain_loss,
         gain_loss_percent=gain_loss_percent,
         **holding_data.model_dump(),
     )
 
-    _HOLDINGS_STORE[holding_id] = holding
-    return holding
-
 
 def list_holdings() -> list[PortfolioHoldingResponse]:
-    return list(_HOLDINGS_STORE.values())
+    db: Session = SessionLocal()
+
+    holdings = db.query(DBHolding).all()
+
+    result = []
+
+    for h in holdings:
+        gain_loss, gain_loss_percent = _calculate_gain_loss(
+            h.invested_amount,
+            h.current_value,
+        )
+
+        result.append(
+            PortfolioHoldingResponse(
+                holding_id=str(h.id),
+                instrument_id=h.instrument_id,
+                instrument_name=h.instrument_name,
+                instrument_type=h.instrument_type,
+                quantity=h.quantity,
+                average_cost=h.average_cost,
+                invested_amount=h.invested_amount,
+                current_value=h.current_value,
+                gain_loss=gain_loss,
+                gain_loss_percent=gain_loss_percent,
+            )
+        )
+
+    db.close()
+    return result
 
 
 def get_portfolio_summary() -> PortfolioSummaryResponse:
