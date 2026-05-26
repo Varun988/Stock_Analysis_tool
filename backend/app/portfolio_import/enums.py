@@ -1,0 +1,16 @@
+from enum import Enum
+
+
+class UploadType(str, Enum):
+    BROKER_STATEMENT = "BROKER_STATEMENT"
+    CAS = "CAS"
+    CSV = "CSV"
+    EXCEL = "EXCEL"
+    MANUAL = "MANUAL"
+
+
+class UploadStatus(str, Enum):
+    RECEIVED = "RECEIVED"
+    PARSING_PENDING = "PARSING_PENDING"
+    PARSED_SUCCESSFULLY = "PARSED_SUCCESSFULLY"
+    PARSING_FAILED = "PARSING_FAILED"
