@@ -12,6 +12,8 @@ from app.recommendation_engine.enums import (
 from app.recommendation_engine.schemas import RecommendationResponse
 from app.risk_engine.service import evaluate_basic_risk
 
+from app.market_data.service import get_preferred_market_data_source_for_instrument
+
 _LATEST_RECOMMENDATION: RecommendationResponse | None = None
 
 
@@ -138,22 +140,10 @@ def _create_regular_recommendation(
         disclaimer=DISCLAIMER,
     )
 
-def _get_risk_source_for_holding(instrument_id: str) -> MarketDataSource:
-    try:
-        instrument = get_instrument(instrument_id)
-    except ValueError:
-        return MarketDataSource.MANUAL
-
-    if instrument is None:
-        return MarketDataSource.MANUAL
-
-    if (
-        instrument.instrument_type == "MUTUAL_FUND"
-        and instrument.amfi_scheme_code
-    ):
-        return MarketDataSource.MFAPI
-
-    return MarketDataSource.MANUAL
+def _get_risk_source_for_holding(instrument_id: str):
+    return get_preferred_market_data_source_for_instrument(
+        instrument_id=instrument_id,
+    )
 
 
 def _build_linked_instrument_risk_note() -> str:
