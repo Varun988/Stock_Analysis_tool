@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
+from app.instruments.service import get_instrument
+from app.market_data.enums import MarketDataSource
 
 from app.portfolio.service import get_portfolio_summary, list_holdings
 from app.profiles.service import get_profile
@@ -136,6 +138,24 @@ def _create_regular_recommendation(
         disclaimer=DISCLAIMER,
     )
 
+def _get_risk_source_for_holding(instrument_id: str) -> MarketDataSource:
+    try:
+        instrument = get_instrument(instrument_id)
+    except ValueError:
+        return MarketDataSource.MANUAL
+
+    if instrument is None:
+        return MarketDataSource.MANUAL
+
+    if (
+        instrument.instrument_type == "MUTUAL_FUND"
+        and instrument.amfi_scheme_code
+    ):
+        return MarketDataSource.MFAPI
+
+    return MarketDataSource.MANUAL
+
+
 def _build_linked_instrument_risk_note() -> str:
     holdings = list_holdings()
 
@@ -154,11 +174,16 @@ def _build_linked_instrument_risk_note() -> str:
     risk_parts: list[str] = []
 
     for holding in linked_holdings:
-        risk = evaluate_basic_risk(holding.instrument_id)
+        source = _get_risk_source_for_holding(holding.instrument_id)
+
+        risk = evaluate_basic_risk(
+            instrument_id=holding.instrument_id,
+            source=source,
+        )
 
         risk_parts.append(
             f"{holding.instrument_name}: {risk.risk_level.value} risk "
-            f"based on available market data. {risk.reason}"
+            f"based on {source.value} market data. {risk.reason}"
         )
 
     return " ".join(risk_parts)
