@@ -51,10 +51,26 @@ def fetch_market_data_history(instrument_id: str):
 def fetch_supported_market_data_providers():
     return success_response(
         data=[
-            "MANUAL",
-            "MFAPI",
-            "AMFI",
-            "YFINANCE",
+            {
+                "name": "MANUAL",
+                "status": "IMPLEMENTED",
+                "description": "Reads manually stored market data snapshots from PostgreSQL.",
+            },
+            {
+                "name": "MFAPI",
+                "status": "SKELETON",
+                "description": "Planned provider for Indian mutual fund NAV data.",
+            },
+            {
+                "name": "AMFI",
+                "status": "PLANNED",
+                "description": "Planned provider for official mutual fund NAV-related data.",
+            },
+            {
+                "name": "YFINANCE",
+                "status": "PLANNED",
+                "description": "Planned provider for ETF and stock historical prices.",
+            },
         ],
         message="Supported market data providers fetched successfully",
     )
