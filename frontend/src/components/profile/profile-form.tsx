@@ -3,7 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 
 type InvestorProfile = {
-: "low" | "moderate" | "high";  monthly_investment_amount: number;
+  monthly_investment_amount: number;
+  risk_appetite: "low" | "moderate" | "high";
   investment_goal: string;
   time_horizon_years: number;
   experience_level: "beginner" | "intermediate" | "advanced";
