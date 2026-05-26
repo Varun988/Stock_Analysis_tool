@@ -1,14 +1,14 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from app.portfolio.service import get_portfolio_summary
+from app.portfolio.service import get_portfolio_summary, list_holdings
 from app.profiles.service import get_profile
 from app.recommendation_engine.enums import (
     RecommendationAction,
     RecommendationReasonCode,
 )
 from app.recommendation_engine.schemas import RecommendationResponse
-
+from app.risk_engine.service import evaluate_basic_risk
 
 _LATEST_RECOMMENDATION: RecommendationResponse | None = None
 
@@ -66,6 +66,7 @@ def _create_concentration_recommendation(
     largest_holding_percent: float,
     concentration_warning: str,
 ) -> RecommendationResponse:
+    linked_risk_note = _build_linked_instrument_risk_note()
     return RecommendationResponse(
         recommendation_id=str(uuid4()),
         recommendation_date=datetime.now(timezone.utc),
@@ -89,6 +90,7 @@ def _create_concentration_recommendation(
             "Diversification can help reduce this risk. Instrument-level market "
             "risk analysis is available separately through the Risk Engine, but "
             "portfolio holdings are not yet linked to instrument IDs."
+            f" {linked_risk_note}"
         ),
         disclaimer=DISCLAIMER,
     )
@@ -101,6 +103,7 @@ def _create_regular_recommendation(
     current_value: float,
     gain_loss_percent: float,
 ) -> RecommendationResponse:
+    linked_risk_note = _build_linked_instrument_risk_note()
     return RecommendationResponse(
         recommendation_id=str(uuid4()),
         recommendation_date=datetime.now(timezone.utc),
@@ -120,12 +123,39 @@ def _create_regular_recommendation(
         ],
         risk_note=(
             "This is still an early recommendation. Basic market performance "
-            "and risk evaluation modules exist, but portfolio holdings are not "
-            "yet linked to instrument IDs. In the next step, holdings will be "
-            "connected to instruments so recommendations can use instrument-level risk."
+            "and risk evaluation modules are now connected for holdings that "
+            "have instrument IDs. "
+            f"{linked_risk_note}"
         ),
         disclaimer=DISCLAIMER,
     )
+
+def _build_linked_instrument_risk_note() -> str:
+    holdings = list_holdings()
+
+    linked_holdings = [
+        holding
+        for holding in holdings
+        if holding.instrument_id is not None
+    ]
+
+    if not linked_holdings:
+        return (
+            "No portfolio holdings are linked to instrument IDs yet, so "
+            "instrument-level risk could not be included in this recommendation."
+        )
+
+    risk_parts: list[str] = []
+
+    for holding in linked_holdings:
+        risk = evaluate_basic_risk(holding.instrument_id)
+
+        risk_parts.append(
+            f"{holding.instrument_name}: {risk.risk_level.value} risk "
+            f"based on available market data. {risk.reason}"
+        )
+
+    return " ".join(risk_parts)
 
 
 def generate_recommendation() -> RecommendationResponse:
