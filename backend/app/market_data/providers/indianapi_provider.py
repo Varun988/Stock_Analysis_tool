@@ -5,6 +5,9 @@ import json
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+from datetime import date
+from app.market_data.enums import MarketDataSource
+
 
 class IndianAPIMarketDataProvider(MarketDataProvider):
     """Market data provider skeleton for India-focused stock/ETF data via IndianAPI."""
@@ -36,9 +39,33 @@ class IndianAPIMarketDataProvider(MarketDataProvider):
     ) -> MarketDataSnapshotResponse | None:
         self._ensure_configured()
 
-        raise NotImplementedError(
-            "IndianAPI latest price integration is not implemented yet."
+        payload = self.search_stock_by_name(instrument_id)
+
+        if not isinstance(payload, dict):
+            return None
+
+        current_price = payload.get("currentPrice", {})
+        nse_price = self._to_float(current_price.get("NSE"))
+        bse_price = self._to_float(current_price.get("BSE"))
+
+        close_price = nse_price or bse_price
+
+        if close_price is None:
+            return None
+
+        return MarketDataSnapshotResponse(
+            snapshot_id=f"indianapi-{instrument_id}-{date.today().isoformat()}",
+            instrument_id=instrument_id,
+            data_date=date.today(),
+            open_price=None,
+            high_price=None,
+            low_price=None,
+            close_price=close_price,
+            nav=None,
+            volume=None,
+            source=MarketDataSource.INDIANAPI,
         )
+
     def _fetch_json(self, path: str) -> dict | list:
         self._ensure_configured()
 
@@ -72,3 +99,12 @@ class IndianAPIMarketDataProvider(MarketDataProvider):
     def search_stock_by_name(self, name: str) -> dict | list:
         encoded_name = quote(name)
         return self._fetch_json(f"/stock?name={encoded_name}")
+
+    def _to_float(self, value) -> float | None:
+        if value is None:
+            return None
+
+        try:
+            return round(float(value), 4)
+        except (TypeError, ValueError):
+            return None
