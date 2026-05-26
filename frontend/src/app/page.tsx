@@ -1,6 +1,7 @@
 import { ProviderHealthList } from "@/components/dashboard/provider-health-list";
 import { StatusCard } from "@/components/dashboard/status-card";
 import { getBackendHealth, getProviderHealth } from "@/lib/api";
+import Link from "next/link";
 
 export default async function Home() {
   try {
@@ -23,6 +24,15 @@ export default async function Home() {
               Educational investment recommendation and portfolio analysis tool
               for Indian stocks, ETFs, and mutual funds.
             </p>
+
+            <div className="mt-6">
+            <Link
+              href="/profile"
+              className="inline-flex rounded-lg bg-emerald-500 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-400"
+            >
+              Set up investor profile
+            </Link>
+          </div>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <StatusCard
