@@ -10,6 +10,7 @@ from app.recommendation_engine.routes import router as recommendation_router
 from app.instruments.routes import router as instrument_router
 
 from app.market_data.routes import router as market_data_router
+from app.metrics.routes import router as metrics_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -73,5 +74,10 @@ app.include_router(
 
 app.include_router(
     market_data_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    metrics_router,
     prefix=settings.api_v1_prefix,
 )
