@@ -5,6 +5,10 @@ from app.market_data.schemas import (
     MarketDataSnapshotResponse,
 )
 
+from sqlalchemy.orm import Session
+from app.db import SessionLocal
+from app.market_data.models import MarketDataSnapshot as DBSnapshot
+
 
 _MARKET_DATA_STORE: dict[str, list[MarketDataSnapshotResponse]] = {}
 
@@ -12,26 +16,61 @@ _MARKET_DATA_STORE: dict[str, list[MarketDataSnapshotResponse]] = {}
 def create_market_data_snapshot(
     snapshot_data: MarketDataSnapshotCreate,
 ) -> MarketDataSnapshotResponse:
-    snapshot = MarketDataSnapshotResponse(
-        snapshot_id=str(uuid4()),
+    db: Session = SessionLocal()
+
+    snapshot = DBSnapshot(
+        instrument_id=snapshot_data.instrument_id,
+        data_date=snapshot_data.data_date,
+        open_price=snapshot_data.open_price,
+        high_price=snapshot_data.high_price,
+        low_price=snapshot_data.low_price,
+        close_price=snapshot_data.close_price,
+        nav=snapshot_data.nav,
+        volume=snapshot_data.volume,
+        source=snapshot_data.source.value,
+    )
+
+    db.add(snapshot)
+    db.commit()
+    db.refresh(snapshot)
+
+    db.close()
+
+    return MarketDataSnapshotResponse(
+        snapshot_id=str(snapshot.id),
         **snapshot_data.model_dump(),
     )
-
-    instrument_snapshots = _MARKET_DATA_STORE.setdefault(
-        snapshot.instrument_id,
-        [],
-    )
-
-    instrument_snapshots.append(snapshot)
-    instrument_snapshots.sort(key=lambda item: item.data_date)
-
-    return snapshot
-
 
 def get_market_data_history(
     instrument_id: str,
 ) -> list[MarketDataSnapshotResponse]:
-    return _MARKET_DATA_STORE.get(instrument_id, [])
+    db: Session = SessionLocal()
+
+    snapshots = (
+        db.query(DBSnapshot)
+        .filter(DBSnapshot.instrument_id == instrument_id)
+        .order_by(DBSnapshot.data_date)
+        .all()
+    )
+
+    result = [
+        MarketDataSnapshotResponse(
+            snapshot_id=str(s.id),
+            instrument_id=s.instrument_id,
+            data_date=s.data_date,
+            open_price=s.open_price,
+            high_price=s.high_price,
+            low_price=s.low_price,
+            close_price=s.close_price,
+            nav=s.nav,
+            volume=s.volume,
+            source=s.source,
+        )
+        for s in snapshots
+    ]
+
+    db.close()
+    return result
 
 
 def get_latest_market_data(
