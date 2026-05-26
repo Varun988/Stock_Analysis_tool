@@ -92,3 +92,23 @@ postgres_data/
 # Misc
 # =========================
 .cache/
+
+# =========================
+# Docker / PostgreSQL
+# =========================
+
+# Local database files / volumes (rare but safe)
+postgres_data/
+
+# Docker artifacts (if any created manually later)
+*.pid
+*.seed
+
+# =========================
+# Python DB artifacts
+# =========================
+
+# SQLite / local DB (in case used later for testing)
+*.db
+*.sqlite
+*.sqlite3
