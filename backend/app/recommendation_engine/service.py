@@ -86,7 +86,9 @@ def _create_concentration_recommendation(
             f"{largest_holding_name} currently represents "
             f"{largest_holding_percent}% of your portfolio. A concentrated "
             "portfolio may move strongly based on one instrument's performance. "
-            "Diversification can help reduce this risk."
+            "Diversification can help reduce this risk. Instrument-level market "
+            "risk analysis is available separately through the Risk Engine, but "
+            "portfolio holdings are not yet linked to instrument IDs."
         ),
         disclaimer=DISCLAIMER,
     )
@@ -117,8 +119,10 @@ def _create_regular_recommendation(
             RecommendationReasonCode.MONTHLY_DISCIPLINE,
         ],
         risk_note=(
-            "This is still an early recommendation. Market data, historical "
-            "performance, scoring, and AI explanation are not included yet."
+            "This is still an early recommendation. Basic market performance "
+            "and risk evaluation modules exist, but portfolio holdings are not "
+            "yet linked to instrument IDs. In the next step, holdings will be "
+            "connected to instruments so recommendations can use instrument-level risk."
         ),
         disclaimer=DISCLAIMER,
     )
