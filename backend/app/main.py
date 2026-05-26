@@ -6,6 +6,7 @@ from app.config import settings
 from app.portfolio.routes import router as portfolio_router
 from app.portfolio_import.routes import router as portfolio_upload_router
 from app.profiles.routes import router as profile_router
+from app.recommendation_engine.routes import router as recommendation_router
 
 
 app = FastAPI(
@@ -36,6 +37,11 @@ app.include_router(
 
 app.include_router(
     portfolio_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    recommendation_router,
     prefix=settings.api_v1_prefix,
 )
 
