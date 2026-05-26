@@ -12,6 +12,8 @@ from app.instruments.routes import router as instrument_router
 from app.market_data.routes import router as market_data_router
 from app.metrics.routes import router as metrics_router
 from app.risk_engine.routes import router as risk_router
+from app.explanation_engine.routes import router as explanation_router
+
 
 app = FastAPI(
     title=settings.app_name,
@@ -85,5 +87,10 @@ app.include_router(
 
 app.include_router(
     risk_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    explanation_router,
     prefix=settings.api_v1_prefix,
 )
