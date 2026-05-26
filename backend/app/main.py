@@ -9,6 +9,8 @@ from app.profiles.routes import router as profile_router
 from app.recommendation_engine.routes import router as recommendation_router
 from app.instruments.routes import router as instrument_router
 
+from app.market_data.routes import router as market_data_router
+
 app = FastAPI(
     title=settings.app_name,
     description="Educational investment recommendation and portfolio analysis API",
@@ -66,5 +68,10 @@ def health_check():
 
 app.include_router(
     instrument_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    market_data_router,
     prefix=settings.api_v1_prefix,
 )
