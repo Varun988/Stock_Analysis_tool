@@ -45,6 +45,13 @@ export default async function Home() {
                 Generate recommendation
               </Link>
               <Link
+                href="/explanations"
+                className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
+              >
+                Explain recommendation
+              </Link>
+
+              <Link
                 href="/instruments"
                 className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
               >
