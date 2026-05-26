@@ -24,6 +24,81 @@ def _calculate_gain_loss(
     return round(gain_loss, 2), round(gain_loss_percent, 2)
 
 
+def _calculate_allocation_by_instrument(
+    holdings: list[PortfolioHoldingResponse],
+    current_value: float,
+) -> dict[str, float]:
+    if current_value == 0:
+        return {}
+
+    allocation: dict[str, float] = {}
+
+    for holding in holdings:
+        allocation[holding.instrument_name] = round(
+            (holding.current_value / current_value) * 100,
+            2,
+        )
+
+    return allocation
+
+
+def _calculate_allocation_by_instrument_type(
+    holdings: list[PortfolioHoldingResponse],
+    current_value: float,
+) -> dict[str, float]:
+    if current_value == 0:
+        return {}
+
+    allocation: dict[str, float] = {}
+
+    for holding in holdings:
+        instrument_type = holding.instrument_type.value
+        allocation[instrument_type] = allocation.get(instrument_type, 0) + holding.current_value
+
+    return {
+        instrument_type: round((value / current_value) * 100, 2)
+        for instrument_type, value in allocation.items()
+    }
+
+
+def _get_largest_holding(
+    allocation_by_instrument: dict[str, float],
+) -> tuple[str | None, float]:
+    if not allocation_by_instrument:
+        return None, 0.0
+
+    largest_holding_name = max(
+        allocation_by_instrument,
+        key=allocation_by_instrument.get,
+    )
+
+    largest_holding_percent = allocation_by_instrument[largest_holding_name]
+
+    return largest_holding_name, largest_holding_percent
+
+
+def _get_concentration_warning(
+    largest_holding_name: str | None,
+    largest_holding_percent: float,
+) -> str | None:
+    if largest_holding_name is None:
+        return None
+
+    if largest_holding_percent >= 75:
+        return (
+            f"High concentration warning: {largest_holding_name} represents "
+            f"{largest_holding_percent}% of the portfolio."
+        )
+
+    if largest_holding_percent >= 60:
+        return (
+            f"Moderate concentration warning: {largest_holding_name} represents "
+            f"{largest_holding_percent}% of the portfolio."
+        )
+
+    return None
+
+
 def create_holding(
     holding_data: PortfolioHoldingCreate,
 ) -> PortfolioHoldingResponse:
@@ -60,10 +135,34 @@ def get_portfolio_summary() -> PortfolioSummaryResponse:
         current_value=current_value,
     )
 
+    allocation_by_instrument = _calculate_allocation_by_instrument(
+        holdings=holdings,
+        current_value=current_value,
+    )
+
+    allocation_by_instrument_type = _calculate_allocation_by_instrument_type(
+        holdings=holdings,
+        current_value=current_value,
+    )
+
+    largest_holding_name, largest_holding_percent = _get_largest_holding(
+        allocation_by_instrument=allocation_by_instrument,
+    )
+
+    concentration_warning = _get_concentration_warning(
+        largest_holding_name=largest_holding_name,
+        largest_holding_percent=largest_holding_percent,
+    )
+
     return PortfolioSummaryResponse(
         total_invested=round(total_invested, 2),
         current_value=round(current_value, 2),
         gain_loss=gain_loss,
         gain_loss_percent=gain_loss_percent,
         number_of_holdings=len(holdings),
+        allocation_by_instrument=allocation_by_instrument,
+        allocation_by_instrument_type=allocation_by_instrument_type,
+        largest_holding_name=largest_holding_name,
+        largest_holding_percent=largest_holding_percent,
+        concentration_warning=concentration_warning,
     )

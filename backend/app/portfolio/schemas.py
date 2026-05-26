@@ -47,3 +47,8 @@ class PortfolioSummaryResponse(BaseModel):
     gain_loss: float
     gain_loss_percent: float
     number_of_holdings: int
+    allocation_by_instrument: dict[str, float]
+    allocation_by_instrument_type: dict[str, float]
+    largest_holding_name: str | None
+    largest_holding_percent: float
+    concentration_warning: str | None
