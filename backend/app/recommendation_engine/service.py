@@ -67,6 +67,9 @@ def _create_concentration_recommendation(
     concentration_warning: str,
 ) -> RecommendationResponse:
     linked_risk_note = _build_linked_instrument_risk_note()
+    diversification_note = _get_diversification_suggestion(
+    {"ETF": 100} if largest_holding_name else {}
+    )
     return RecommendationResponse(
         recommendation_id=str(uuid4()),
         recommendation_date=datetime.now(timezone.utc),
@@ -76,6 +79,7 @@ def _create_concentration_recommendation(
             f"{concentration_warning} For this month's investment of "
             f"₹{monthly_investment_amount}, review diversification before "
             f"adding more to {largest_holding_name}."
+            f" {diversification_note}"
         ),
         reason_codes=[
             RecommendationReasonCode.PROFILE_AVAILABLE,
@@ -104,6 +108,7 @@ def _create_regular_recommendation(
     gain_loss_percent: float,
 ) -> RecommendationResponse:
     linked_risk_note = _build_linked_instrument_risk_note()
+    diversification_note = "Ensure your portfolio stays diversified across ETFs, mutual funds, and stocks."
     return RecommendationResponse(
         recommendation_id=str(uuid4()),
         recommendation_date=datetime.now(timezone.utc),
@@ -114,6 +119,7 @@ def _create_regular_recommendation(
             f"currently has {number_of_holdings} holding(s), total invested "
             f"amount of ₹{total_invested}, current value of ₹{current_value}, "
             f"and gain/loss of {gain_loss_percent}%."
+            f" {diversification_note}"
         ),
         reason_codes=[
             RecommendationReasonCode.PROFILE_AVAILABLE,
@@ -201,3 +207,20 @@ def generate_recommendation() -> RecommendationResponse:
 
 def get_latest_recommendation() -> RecommendationResponse | None:
     return _LATEST_RECOMMENDATION
+
+def _get_diversification_suggestion(allocation_by_type: dict[str, float]) -> str:
+    expected_types = {"ETF", "MUTUAL_FUND", "STOCK"}
+
+    current_types = set(allocation_by_type.keys())
+
+    missing_types = expected_types - current_types
+
+    if not missing_types:
+        return "Your portfolio already has basic diversification across major instrument types."
+
+    missing_list = ", ".join(missing_types)
+
+    return (
+        f"Your portfolio is missing exposure to: {missing_list}. "
+        f"Consider adding investments in these categories to improve diversification."
+    )
