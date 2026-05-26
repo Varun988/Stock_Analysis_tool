@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
-
+from app.market_data.providers.status import get_provider_health_status
+from app.market_data.providers.indianapi_provider import IndianAPIMarketDataProvider
 from app.common.responses import success_response
 from app.market_data.enums import MarketDataSource
 from app.market_data.schemas import MarketDataSnapshotCreate
@@ -23,6 +24,23 @@ def create_snapshot(snapshot_data: MarketDataSnapshotCreate):
         message="Market data snapshot created successfully",
     )
 
+
+@router.get("/indianapi/stock-search", response_model=dict)
+def search_indianapi_stock(name: str):
+    provider = IndianAPIMarketDataProvider()
+
+    try:
+        result = provider.search_stock_by_name(name)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+
+    return success_response(
+        data=result,
+        message="IndianAPI stock search fetched successfully",
+    )
 
 @router.get("/{instrument_id}/latest", response_model=dict)
 def fetch_latest_market_data(
@@ -108,6 +126,20 @@ def fetch_supported_market_data_providers():
                 "status": "IMPLEMENTED",
                 "description": "Fetches ETF and stock historical prices using yfinance.",
             },
+            {
+                "name": "INDIANAPI",
+                "status": "SKELETON",
+                "description": "Provider skeleton for India-focused stock and ETF market data.",
+            },
+
         ],
         message="Supported market data providers fetched successfully",
+    )
+
+
+@router.get("/providers/health", response_model=dict)
+def fetch_market_data_provider_health():
+    return success_response(
+        data=get_provider_health_status(),
+        message="Market data provider health fetched successfully",
     )

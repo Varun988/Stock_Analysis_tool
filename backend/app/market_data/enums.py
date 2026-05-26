@@ -6,3 +6,4 @@ class MarketDataSource(str, Enum):
     MFAPI = "MFAPI"
     AMFI = "AMFI"
     YFINANCE = "YFINANCE"
+    INDIANAPI = "INDIANAPI"

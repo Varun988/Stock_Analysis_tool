@@ -88,4 +88,18 @@ def resolve_provider_instrument_id(
 
         return instrument.symbol
 
+    if source == MarketDataSource.INDIANAPI:
+        try:
+            instrument = get_instrument(instrument_id)
+        except ValueError:
+            instrument = None
+
+        if instrument is None:
+            return instrument_id
+
+        if not instrument.symbol:
+            raise ValueError("Instrument does not have a symbol for IndianAPI.")
+
+        return instrument.symbol
+
     return instrument_id
