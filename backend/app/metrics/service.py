@@ -1,7 +1,8 @@
 from app.market_data.schemas import MarketDataSnapshotResponse
 from app.market_data.service import get_market_data_history
 from app.metrics.schemas import BasicPerformanceResponse
-
+from app.market_data.enums import MarketDataSource
+from app.market_data.service import resolve_provider_instrument_id
 
 def _get_snapshot_value(
     snapshot: MarketDataSnapshotResponse,
@@ -17,8 +18,17 @@ def _get_snapshot_value(
 
 def calculate_basic_performance(
     instrument_id: str,
+    source: MarketDataSource = MarketDataSource.MANUAL,
 ) -> BasicPerformanceResponse:
-    history = get_market_data_history(instrument_id)
+    provider_instrument_id = resolve_provider_instrument_id(
+        instrument_id=instrument_id,
+        source=source,
+    )
+
+    history = get_market_data_history(
+        instrument_id=provider_instrument_id,
+        source=source,
+    )
 
     valid_values = [
         _get_snapshot_value(snapshot)

@@ -1,10 +1,16 @@
 from app.metrics.service import calculate_basic_performance
 from app.risk_engine.enums import RiskLevel
 from app.risk_engine.schemas import BasicRiskResponse
+from app.market_data.enums import MarketDataSource
 
-
-def evaluate_basic_risk(instrument_id: str) -> BasicRiskResponse:
-    performance = calculate_basic_performance(instrument_id)
+def evaluate_basic_risk(
+    instrument_id: str,
+    source: MarketDataSource = MarketDataSource.MANUAL,
+) -> BasicRiskResponse:
+    performance = calculate_basic_performance(
+        instrument_id=instrument_id,
+        source=source,
+    )
 
     if performance.data_points < 2 or performance.return_percent is None:
         return BasicRiskResponse(

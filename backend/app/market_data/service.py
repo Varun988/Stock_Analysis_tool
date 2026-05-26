@@ -8,6 +8,7 @@ from app.db import SessionLocal
 from app.market_data.models import MarketDataSnapshot as DBSnapshot
 from app.market_data.enums import MarketDataSource
 from app.market_data.providers.registry import get_market_data_provider
+from app.instruments.service import get_instrument
 
 def create_market_data_snapshot(
     snapshot_data: MarketDataSnapshotCreate,
@@ -52,3 +53,22 @@ def get_latest_market_data(
     provider = get_market_data_provider(source)
     return provider.get_latest(instrument_id)
 
+def resolve_provider_instrument_id(
+    instrument_id: str,
+    source: MarketDataSource,
+) -> str:
+    if source != MarketDataSource.MFAPI:
+        return instrument_id
+
+    try:
+        instrument = get_instrument(instrument_id)
+    except ValueError:
+        instrument = None
+
+    if instrument is None:
+        return instrument_id
+
+    if not instrument.amfi_scheme_code:
+        raise ValueError("Instrument does not have an AMFI/MFAPI scheme code.")
+
+    return instrument.amfi_scheme_code
