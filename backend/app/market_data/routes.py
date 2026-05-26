@@ -9,6 +9,7 @@ from app.market_data.service import (
     get_latest_market_data,
     get_market_data_history,
     resolve_provider_instrument_id,
+    get_preferred_market_data_source_for_instrument,
 )
 
 
@@ -40,6 +41,20 @@ def search_indianapi_stock(name: str):
     return success_response(
         data=result,
         message="IndianAPI stock search fetched successfully",
+    )
+
+@router.get("/{instrument_id}/preferred-source", response_model=dict)
+def fetch_preferred_market_data_source(instrument_id: str):
+    preferred_source = get_preferred_market_data_source_for_instrument(
+        instrument_id=instrument_id,
+    )
+
+    return success_response(
+        data={
+            "instrument_id": instrument_id,
+            "preferred_source": preferred_source.value,
+        },
+        message="Preferred market data source fetched successfully",
     )
 
 @router.get("/{instrument_id}/latest", response_model=dict)

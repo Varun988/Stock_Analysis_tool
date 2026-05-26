@@ -103,3 +103,28 @@ def resolve_provider_instrument_id(
         return instrument.symbol
 
     return instrument_id
+
+def get_preferred_market_data_source_for_instrument(
+    instrument_id: str,
+) -> MarketDataSource:
+    try:
+        instrument = get_instrument(instrument_id)
+    except ValueError:
+        return MarketDataSource.MANUAL
+
+    if instrument is None:
+        return MarketDataSource.MANUAL
+
+    if (
+        instrument.instrument_type == "MUTUAL_FUND"
+        and instrument.amfi_scheme_code
+    ):
+        return MarketDataSource.MFAPI
+
+    if (
+        instrument.instrument_type in ["STOCK", "ETF"]
+        and instrument.symbol
+    ):
+        return MarketDataSource.INDIANAPI
+
+    return MarketDataSource.MANUAL
