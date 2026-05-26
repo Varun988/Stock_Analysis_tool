@@ -38,7 +38,12 @@ export default async function Home() {
               >
                 Manage portfolio
               </Link>
-
+              <Link
+                href="/recommendations"
+                className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
+              >
+                Generate recommendation
+              </Link>
               <Link
                 href="/instruments"
                 className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
