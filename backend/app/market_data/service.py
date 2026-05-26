@@ -57,18 +57,35 @@ def resolve_provider_instrument_id(
     instrument_id: str,
     source: MarketDataSource,
 ) -> str:
-    if source != MarketDataSource.MFAPI:
-        return instrument_id
+    if source == MarketDataSource.MFAPI:
+        try:
+            instrument = get_instrument(instrument_id)
+        except ValueError:
+            instrument = None
 
-    try:
-        instrument = get_instrument(instrument_id)
-    except ValueError:
-        instrument = None
+        if instrument is None:
+            return instrument_id
 
-    if instrument is None:
-        return instrument_id
+        if not instrument.amfi_scheme_code:
+            raise ValueError("Instrument does not have an AMFI/MFAPI scheme code.")
 
-    if not instrument.amfi_scheme_code:
-        raise ValueError("Instrument does not have an AMFI/MFAPI scheme code.")
+        return instrument.amfi_scheme_code
 
-    return instrument.amfi_scheme_code
+    if source == MarketDataSource.YFINANCE:
+        try:
+            instrument = get_instrument(instrument_id)
+        except ValueError:
+            instrument = None
+
+        if instrument is None:
+            return instrument_id
+
+        if not instrument.symbol:
+            raise ValueError("Instrument does not have a symbol for YFinance.")
+
+        if instrument.market == "INDIA" and not instrument.symbol.endswith(".NS"):
+            return f"{instrument.symbol}.NS"
+
+        return instrument.symbol
+
+    return instrument_id
