@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from app.market_data.schemas import (
     MarketDataSnapshotCreate,
     MarketDataSnapshotResponse,
@@ -8,10 +6,8 @@ from app.market_data.schemas import (
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.market_data.models import MarketDataSnapshot as DBSnapshot
-
-
-_MARKET_DATA_STORE: dict[str, list[MarketDataSnapshotResponse]] = {}
-
+from app.market_data.enums import MarketDataSource
+from app.market_data.providers.registry import get_market_data_provider
 
 def create_market_data_snapshot(
     snapshot_data: MarketDataSnapshotCreate,
@@ -43,42 +39,16 @@ def create_market_data_snapshot(
 
 def get_market_data_history(
     instrument_id: str,
+    source: MarketDataSource = MarketDataSource.MANUAL,
 ) -> list[MarketDataSnapshotResponse]:
-    db: Session = SessionLocal()
-
-    snapshots = (
-        db.query(DBSnapshot)
-        .filter(DBSnapshot.instrument_id == instrument_id)
-        .order_by(DBSnapshot.data_date)
-        .all()
-    )
-
-    result = [
-        MarketDataSnapshotResponse(
-            snapshot_id=str(s.id),
-            instrument_id=s.instrument_id,
-            data_date=s.data_date,
-            open_price=s.open_price,
-            high_price=s.high_price,
-            low_price=s.low_price,
-            close_price=s.close_price,
-            nav=s.nav,
-            volume=s.volume,
-            source=s.source,
-        )
-        for s in snapshots
-    ]
-
-    db.close()
-    return result
+    provider = get_market_data_provider(source)
+    return provider.get_history(instrument_id)
 
 
 def get_latest_market_data(
     instrument_id: str,
+    source: MarketDataSource = MarketDataSource.MANUAL,
 ) -> MarketDataSnapshotResponse | None:
-    history = get_market_data_history(instrument_id)
+    provider = get_market_data_provider(source)
+    return provider.get_latest(instrument_id)
 
-    if not history:
-        return None
-
-    return history[-1]

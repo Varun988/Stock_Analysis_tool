@@ -46,3 +46,15 @@ def fetch_market_data_history(instrument_id: str):
         data=[snapshot.model_dump() for snapshot in history],
         message="Market data history fetched successfully",
     )
+
+@router.get("/providers", response_model=dict)
+def fetch_supported_market_data_providers():
+    return success_response(
+        data=[
+            "MANUAL",
+            "MFAPI",
+            "AMFI",
+            "YFINANCE",
+        ],
+        message="Supported market data providers fetched successfully",
+    )
