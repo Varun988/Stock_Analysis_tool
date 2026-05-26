@@ -16,6 +16,7 @@ class Instrument(Base):
     symbol = Column(String)
     isin = Column(String)
     category = Column(String)
+    amfi_scheme_code = Column(String, nullable=True)
 
 
 Base.metadata.create_all(bind=engine)

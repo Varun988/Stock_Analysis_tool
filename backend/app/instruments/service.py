@@ -22,6 +22,7 @@ def create_instrument(
         symbol=instrument_data.symbol,
         isin=instrument_data.isin,
         category=instrument_data.category,
+        amfi_scheme_code=instrument_data.amfi_scheme_code,
     )
 
     db.add(instrument)
@@ -51,6 +52,7 @@ def list_instruments() -> list[InstrumentResponse]:
             symbol=inst.symbol,
             isin=inst.isin,
             category=inst.category,
+            amfi_scheme_code=inst.amfi_scheme_code,
         )
         for inst in instruments
     ]
@@ -76,6 +78,7 @@ def get_instrument(instrument_id: str) -> InstrumentResponse | None:
         symbol=inst.symbol,
         isin=inst.isin,
         category=inst.category,
+        amfi_scheme_code=inst.amfi_scheme_code,
     )
 
     db.close()

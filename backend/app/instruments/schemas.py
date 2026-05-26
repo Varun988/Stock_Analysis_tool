@@ -29,6 +29,10 @@ class InstrumentCreate(BaseModel):
         default=None,
         description="Category such as Nifty 50 ETF, Index Fund, Large Cap Fund",
     )
+    amfi_scheme_code: str | None = Field(
+        default=None,
+        description="AMFI/MFAPI scheme code for mutual funds, if available",
+    )
 
 
 class InstrumentResponse(InstrumentCreate):
