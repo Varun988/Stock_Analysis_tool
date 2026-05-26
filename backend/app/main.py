@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.common.constants import APP_VERSION
 from app.config import settings
+from app.portfolio.routes import router as portfolio_router
 from app.portfolio_import.routes import router as portfolio_upload_router
 from app.profiles.routes import router as profile_router
 
@@ -30,6 +31,11 @@ app.include_router(
 
 app.include_router(
     portfolio_upload_router,
+    prefix=settings.api_v1_prefix,
+)
+
+app.include_router(
+    portfolio_router,
     prefix=settings.api_v1_prefix,
 )
 
