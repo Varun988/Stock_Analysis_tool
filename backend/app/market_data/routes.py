@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 from app.market_data.enums import MarketDataSource
+from app.instruments.service import get_instrument
 
 from app.common.responses import success_response
 from app.market_data.schemas import MarketDataSnapshotCreate
@@ -12,6 +13,28 @@ from app.market_data.service import (
 
 router = APIRouter(prefix="/market-data", tags=["Market Data"])
 
+def _resolve_provider_instrument_id(
+    instrument_id: str,
+    source: MarketDataSource,
+) -> str:
+    if source != MarketDataSource.MFAPI:
+        return instrument_id
+
+    try:
+        instrument = get_instrument(instrument_id)
+    except ValueError:
+        instrument = None
+
+    if instrument is None:
+        return instrument_id
+
+    if not instrument.amfi_scheme_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Instrument does not have an AMFI/MFAPI scheme code.",
+        )
+
+    return instrument.amfi_scheme_code
 
 @router.post("/snapshots", response_model=dict, status_code=status.HTTP_201_CREATED)
 def create_snapshot(snapshot_data: MarketDataSnapshotCreate):
@@ -28,8 +51,15 @@ def fetch_latest_market_data(
     instrument_id: str,
     source: MarketDataSource = MarketDataSource.MANUAL,
 ):
-    snapshot = get_latest_market_data(
+    
+
+    provider_instrument_id = _resolve_provider_instrument_id(
         instrument_id=instrument_id,
+        source=source,
+    )
+
+    snapshot = get_latest_market_data(
+        instrument_id=provider_instrument_id,
         source=source,
     )
 
@@ -50,8 +80,13 @@ def fetch_market_data_history(
     instrument_id: str,
     source: MarketDataSource = MarketDataSource.MANUAL,
 ):
-    history = get_market_data_history(
+    provider_instrument_id = _resolve_provider_instrument_id(
         instrument_id=instrument_id,
+        source=source,
+    )
+
+    history = get_market_data_history(
+        instrument_id=provider_instrument_id,
         source=source,
     )
 
