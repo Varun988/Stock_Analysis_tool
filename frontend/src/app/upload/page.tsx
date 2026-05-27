@@ -151,159 +151,220 @@ export default function UploadPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-6">
-      <section className="rounded-lg border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Upload Portfolio Statement
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Upload a CSV, XLSX, or TXT portfolio statement. The backend will
-          extract holdings, validate them, and let you import reviewed rows into
-          the latest portfolio snapshot.
-        </p>
-
-        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls,.txt,.pdf,.xml"
-            onChange={handleFileChange}
-            className="block w-full rounded-md border border-gray-300 p-2 text-sm"
-          />
-
-          <button
-            type="button"
-            onClick={handleExtract}
-            disabled={!selectedFile || isExtracting}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
-          >
-            {isExtracting ? "Extracting..." : "Extract Holdings"}
-          </button>
-        </div>
-
-        {selectedFile && (
-          <p className="mt-3 text-sm text-gray-700">
-            Selected file:{" "}
-            <span className="font-medium">{selectedFile.name}</span>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-white">
+      <section className="mx-auto max-w-7xl space-y-8">
+        <section className="rounded-2xl border border-emerald-500/30 bg-slate-900 p-8 shadow-xl">
+          <p className="text-sm uppercase tracking-wide text-emerald-300">
+            Portfolio Import
           </p>
-        )}
 
-        {errorMessage && (
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        )}
-      </section>
-
-      {extractionData && (
-        <section className="rounded-lg border bg-white p-6 shadow-sm">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Extraction Result
-              </h2>
-              <p className="mt-1 text-sm text-gray-600">
-                Method:{" "}
-                <span className="font-medium">
-                  {extractionData.extraction_method}
-                </span>{" "}
-                | File:{" "}
-                <span className="font-medium">{extractionData.file_name}</span>
+              <h1 className="text-4xl font-bold tracking-tight">
+                Upload Portfolio Statement
+              </h1>
+
+              <p className="mt-4 max-w-3xl text-slate-300">
+                Upload a CSV, XLSX, or TXT portfolio statement. The backend will
+                extract holdings, validate the rows, and let you import reviewed
+                holdings into the latest portfolio snapshot.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleImportReviewed}
-              disabled={
-                isImporting || extractionData.valid_holdings.length === 0
-              }
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-gray-400"
-            >
-              {isImporting ? "Importing..." : "Import Reviewed Holdings"}
-            </button>
+            <div className="rounded-full border border-emerald-500/30 bg-emerald-950/40 px-4 py-2 text-xs font-medium text-emerald-200">
+              Statement Upload MVP
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <SummaryCard
-              label="Holdings detected"
-              value={extractionData.holdings_detected}
-            />
-            <SummaryCard
-              label="Valid holdings"
-              value={extractionData.valid_holdings_count}
-            />
-            <SummaryCard
-              label="Invalid holdings"
-              value={extractionData.invalid_holdings_count}
-            />
+          <div className="mt-8 rounded-2xl border border-slate-700 bg-slate-950/60 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls,.txt,.pdf,.xml"
+                onChange={handleFileChange}
+                className="block w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-200 file:mr-4 file:rounded-md file:border-0 file:bg-emerald-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 hover:file:bg-emerald-400"
+              />
+
+              <button
+                type="button"
+                onClick={handleExtract}
+                disabled={!selectedFile || isExtracting}
+                className="inline-flex min-w-40 justify-center rounded-lg bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              >
+                {isExtracting ? "Extracting..." : "Extract Holdings"}
+              </button>
+            </div>
+
+            {selectedFile && (
+              <p className="mt-4 text-sm text-slate-300">
+                Selected file:{" "}
+                <span className="font-semibold text-emerald-300">
+                  {selectedFile.name}
+                </span>
+              </p>
+            )}
+
+            <p className="mt-3 text-xs text-slate-500">
+              Tip: CSV/XLSX is parsed deterministically. TXT/unstructured
+              statements can use Gemini extraction. Review rows before import.
+            </p>
           </div>
 
-          {extractionData.warnings.length > 0 && (
-            <div className="mt-4 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-              <p className="font-medium">Warnings</p>
-              <ul className="mt-2 list-disc pl-5">
-                {extractionData.warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
+          {errorMessage && (
+            <div className="mt-6 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-100">
+              <p className="font-semibold text-red-200">Something went wrong</p>
+              <p className="mt-1">{errorMessage}</p>
             </div>
           )}
-
-          <HoldingsTable holdings={extractionData.valid_holdings} />
-
-          {extractionData.invalid_holdings.length > 0 && (
-            <InvalidHoldingsTable
-              invalidHoldings={extractionData.invalid_holdings}
-            />
-          )}
         </section>
-      )}
 
-      {importData && (
-        <section className="rounded-lg border border-green-200 bg-green-50 p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-green-900">
-            Import Completed
-          </h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <SummaryCard
-              label="Holdings received"
-              value={importData.holdings_received}
-            />
-            <SummaryCard
-              label="Holdings imported"
-              value={importData.holdings_imported}
-            />
-            <SummaryCard
-              label="Deleted old snapshot rows"
-              value={importData.deleted_existing_holdings_for_snapshot}
-            />
-          </div>
+        {extractionData && (
+          <section className="rounded-2xl border border-slate-700 bg-slate-900 p-8 shadow-xl">
+            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
+              <div>
+                <p className="text-sm uppercase tracking-wide text-slate-400">
+                  Extraction Result
+                </p>
 
-          <p className="mt-4 text-sm text-green-800">
-            Snapshot date:{" "}
-            <span className="font-medium">{importData.snapshot_date}</span>
-          </p>
-          <p className="mt-1 text-sm text-green-800">
-            Source upload ID:{" "}
-            <span className="font-medium">{importData.source_upload_id}</span>
-          </p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  Holdings extracted from statement
+                </h2>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <a
-              href="/portfolio"
-              className="rounded-md bg-white px-4 py-2 text-sm font-medium text-green-700 ring-1 ring-green-300"
-            >
-              View Portfolio
-            </a>
-            <a
-              href="/recommendations"
-              className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white"
-            >
-              Generate Recommendation
-            </a>
-          </div>
-        </section>
-      )}
+                <p className="mt-2 text-sm text-slate-400">
+                  Method:{" "}
+                  <span className="font-medium text-emerald-300">
+                    {extractionData.extraction_method}
+                  </span>{" "}
+                  | File:{" "}
+                  <span className="font-medium text-slate-200">
+                    {extractionData.file_name}
+                  </span>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleImportReviewed}
+                disabled={
+                  isImporting || extractionData.valid_holdings.length === 0
+                }
+                className="inline-flex justify-center rounded-lg bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              >
+                {isImporting ? "Importing..." : "Import Reviewed Holdings"}
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <SummaryCard
+                label="Holdings detected"
+                value={extractionData.holdings_detected}
+                tone="neutral"
+              />
+              <SummaryCard
+                label="Valid holdings"
+                value={extractionData.valid_holdings_count}
+                tone="success"
+              />
+              <SummaryCard
+                label="Invalid holdings"
+                value={extractionData.invalid_holdings_count}
+                tone={
+                  extractionData.invalid_holdings_count > 0
+                    ? "warning"
+                    : "neutral"
+                }
+              />
+            </div>
+
+            {extractionData.warnings.length > 0 && (
+              <div className="mt-6 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4 text-sm text-amber-100">
+                <p className="font-semibold text-amber-200">Warnings</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {extractionData.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <HoldingsTable holdings={extractionData.valid_holdings} />
+
+            {extractionData.invalid_holdings.length > 0 && (
+              <InvalidHoldingsTable
+                invalidHoldings={extractionData.invalid_holdings}
+              />
+            )}
+          </section>
+        )}
+
+        {importData && (
+          <section className="rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-8 shadow-xl">
+            <p className="text-sm uppercase tracking-wide text-emerald-300">
+              Import Completed
+            </p>
+
+            <h2 className="mt-2 text-2xl font-semibold text-white">
+              Reviewed holdings imported successfully
+            </h2>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <SummaryCard
+                label="Holdings received"
+                value={importData.holdings_received}
+                tone="neutral"
+              />
+              <SummaryCard
+                label="Holdings imported"
+                value={importData.holdings_imported}
+                tone="success"
+              />
+              <SummaryCard
+                label="Replaced old snapshot rows"
+                value={importData.deleted_existing_holdings_for_snapshot}
+                tone="warning"
+              />
+            </div>
+
+            <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950/60 p-4 text-sm text-slate-300">
+              <p>
+                Snapshot date:{" "}
+                <span className="font-semibold text-emerald-300">
+                  {importData.snapshot_date}
+                </span>
+              </p>
+              <p className="mt-1">
+                Source upload ID:{" "}
+                <span className="font-semibold text-slate-100">
+                  {importData.source_upload_id}
+                </span>
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a
+                href="/portfolio"
+                className="rounded-lg border border-slate-600 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-emerald-400 hover:text-emerald-300"
+              >
+                View Portfolio
+              </a>
+
+              <a
+                href="/recommendations"
+                className="rounded-lg bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+              >
+                Generate Recommendation
+              </a>
+
+              <a
+                href="/explanations"
+                className="rounded-lg border border-slate-600 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:border-emerald-400 hover:text-emerald-300"
+              >
+                Explain Recommendation
+              </a>
+            </div>
+          </section>
+        )}
+      </section>
     </main>
   );
 }
@@ -311,14 +372,22 @@ export default function UploadPage() {
 function SummaryCard({
   label,
   value,
+  tone,
 }: {
   label: string;
   value: string | number;
+  tone: "neutral" | "success" | "warning";
 }) {
+  const toneClassName = {
+    neutral: "border-slate-700 bg-slate-950/60 text-slate-100",
+    success: "border-emerald-500/30 bg-emerald-950/30 text-emerald-200",
+    warning: "border-amber-500/30 bg-amber-950/30 text-amber-200",
+  }[tone];
+
   return (
-    <div className="rounded-lg border bg-gray-50 p-4">
-      <p className="text-sm text-gray-600">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
+    <div className={`rounded-xl border p-5 ${toneClassName}`}>
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
     </div>
   );
 }
@@ -326,52 +395,62 @@ function SummaryCard({
 function HoldingsTable({ holdings }: { holdings: ExtractedHolding[] }) {
   if (holdings.length === 0) {
     return (
-      <div className="mt-6 rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+      <div className="mt-6 rounded-xl border border-slate-700 bg-slate-950/60 p-5 text-sm text-slate-400">
         No valid holdings found.
       </div>
     );
   }
 
   return (
-    <div className="mt-6 overflow-x-auto">
-      <h3 className="mb-3 text-lg font-semibold text-gray-900">
-        Valid Holdings
-      </h3>
-      <table className="min-w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b bg-gray-50">
-            <th className="p-3">Instrument</th>
-            <th className="p-3">Type</th>
-            <th className="p-3">Symbol</th>
-            <th className="p-3">ISIN</th>
-            <th className="p-3 text-right">Qty</th>
-            <th className="p-3 text-right">Avg Cost</th>
-            <th className="p-3 text-right">Invested</th>
-            <th className="p-3 text-right">Current</th>
-            <th className="p-3">Confidence</th>
-          </tr>
-        </thead>
-        <tbody>
-          {holdings.map((holding, index) => (
-            <tr
-              key={`${holding.instrument_name}-${index}`}
-              className="border-b"
-            >
-              <td className="p-3 font-medium text-gray-900">
-                {holding.instrument_name}
-              </td>
-              <td className="p-3">{holding.instrument_type}</td>
-              <td className="p-3">{holding.symbol ?? "-"}</td>
-              <td className="p-3">{holding.isin ?? "-"}</td>
-              <td className="p-3 text-right">{holding.quantity}</td>
-              <td className="p-3 text-right">₹{holding.average_cost}</td>
-              <td className="p-3 text-right">₹{holding.invested_amount}</td>
-              <td className="p-3 text-right">₹{holding.current_value}</td>
-              <td className="p-3">{holding.confidence ?? "-"}</td>
+    <div className="mt-8 overflow-hidden rounded-xl border border-slate-700">
+      <div className="border-b border-slate-700 bg-slate-950/80 px-5 py-4">
+        <h3 className="text-lg font-semibold text-white">Valid Holdings</h3>
+        <p className="mt-1 text-sm text-slate-400">
+          These rows passed backend validation and are ready for reviewed import.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse text-left text-sm">
+          <thead className="bg-slate-800 text-slate-300">
+            <tr>
+              <th className="p-3">Instrument</th>
+              <th className="p-3">Type</th>
+              <th className="p-3">Symbol</th>
+              <th className="p-3">ISIN</th>
+              <th className="p-3 text-right">Qty</th>
+              <th className="p-3 text-right">Avg Cost</th>
+              <th className="p-3 text-right">Invested</th>
+              <th className="p-3 text-right">Current</th>
+              <th className="p-3">Confidence</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-800 bg-slate-900 text-slate-200">
+            {holdings.map((holding, index) => (
+              <tr
+                key={`${holding.instrument_name}-${index}`}
+                className="hover:bg-slate-800/70"
+              >
+                <td className="p-3 font-medium text-white">
+                  {holding.instrument_name}
+                </td>
+                <td className="p-3">{holding.instrument_type}</td>
+                <td className="p-3">{holding.symbol || "-"}</td>
+                <td className="p-3">{holding.isin || "-"}</td>
+                <td className="p-3 text-right">{holding.quantity}</td>
+                <td className="p-3 text-right">₹{holding.average_cost}</td>
+                <td className="p-3 text-right">₹{holding.invested_amount}</td>
+                <td className="p-3 text-right">₹{holding.current_value}</td>
+                <td className="p-3">
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-950/40 px-2 py-1 text-xs font-medium text-emerald-200">
+                    {holding.confidence ?? "REVIEWED"}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -382,36 +461,44 @@ function InvalidHoldingsTable({
   invalidHoldings: InvalidExtractedHolding[];
 }) {
   return (
-    <div className="mt-8 overflow-x-auto">
-      <h3 className="mb-3 text-lg font-semibold text-red-900">
-        Invalid Holdings
-      </h3>
-      <table className="min-w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b bg-red-50">
-            <th className="p-3">Row</th>
-            <th className="p-3">Instrument</th>
-            <th className="p-3">Errors</th>
-          </tr>
-        </thead>
-        <tbody>
-          {invalidHoldings.map((item) => (
-            <tr key={item.row_number} className="border-b">
-              <td className="p-3">{item.row_number}</td>
-              <td className="p-3">
-                {item.holding.instrument_name ?? "Unknown"}
-              </td>
-              <td className="p-3 text-red-700">
-                <ul className="list-disc pl-5">
-                  {item.errors.map((error) => (
-                    <li key={error}>{error}</li>
-                  ))}
-                </ul>
-              </td>
+    <div className="mt-8 overflow-hidden rounded-xl border border-red-500/40">
+      <div className="border-b border-red-500/30 bg-red-950/40 px-5 py-4">
+        <h3 className="text-lg font-semibold text-red-100">
+          Invalid Holdings
+        </h3>
+        <p className="mt-1 text-sm text-red-200">
+          These rows need correction before they can be imported.
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse text-left text-sm">
+          <thead className="bg-red-950/60 text-red-100">
+            <tr>
+              <th className="p-3">Row</th>
+              <th className="p-3">Instrument</th>
+              <th className="p-3">Errors</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-red-900/50 bg-slate-900 text-red-100">
+            {invalidHoldings.map((item) => (
+              <tr key={item.row_number}>
+                <td className="p-3">{item.row_number}</td>
+                <td className="p-3">
+                  {item.holding.instrument_name ?? "Unknown"}
+                </td>
+                <td className="p-3">
+                  <ul className="list-disc space-y-1 pl-5">
+                    {item.errors.map((error) => (
+                      <li key={error}>{error}</li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
