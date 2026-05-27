@@ -21,11 +21,38 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
     def _build_prompt(self, request: AIExplanationRequest) -> str:
         reason_codes_text = ", ".join(request.reason_codes)
 
+        if request.allocation_plan:
+            allocation_plan_text = "\n".join(
+                [
+                    (
+                        f"- {item.instrument_type}: INR {item.amount}. "
+                        f"Reason: {item.reason}"
+                    )
+                    for item in request.allocation_plan
+                ]
+            )
+        else:
+            allocation_plan_text = "No allocation plan was provided."
+
+        if request.score_breakdown is not None:
+            score_breakdown_text = (
+                "Diversification score: "
+                f"{request.score_breakdown.diversification_score}/100\n"
+                "Risk suitability score: "
+                f"{request.score_breakdown.risk_suitability_score}/100\n"
+                "Preference match score: "
+                f"{request.score_breakdown.preference_match_score}/100"
+            )
+        else:
+            score_breakdown_text = "No score breakdown was provided."
+
         prompt_lines = [
             "You are an educational investment explanation assistant.",
             "",
             "Your job:",
             "- Explain the backend-generated recommendation in beginner-friendly language.",
+            "- Explain the suggested allocation plan if one is provided.",
+            "- Explain the score breakdown if one is provided.",
             "- Do not invent new prices, NAVs, returns, risk values, or financial facts.",
             "- Do not give direct buy/sell advice.",
             "- Do not override the backend recommendation.",
@@ -41,16 +68,22 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
             f"Risk note: {request.risk_note}",
             f"Disclaimer: {request.disclaimer}",
             "",
+            "Suggested allocation plan:",
+            allocation_plan_text,
+            "",
+            "Score breakdown:",
+            score_breakdown_text,
+            "",
             "Return only valid JSON with exactly these keys:",
             "{",
             '  "beginner_summary": "short beginner-friendly summary",',
-            '  "explanation": "detailed but simple explanation",',
-            '  "risk_explanation": "simple explanation of the risk note"',
+            '  "explanation": "detailed but simple explanation including the allocation plan and score breakdown",',
+            '  "risk_explanation": "simple explanation of the risk note and risk suitability score"',
             "}",
         ]
 
         return "\n".join(prompt_lines)
-
+        
     def _clean_json_text(self, text: str) -> str:
         cleaned_text = text.strip()
 
