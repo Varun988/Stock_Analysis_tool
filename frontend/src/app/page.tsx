@@ -62,7 +62,12 @@ export default async function Home() {
               >
                 Explain recommendation
               </Link>
-
+              <Link
+                href="/research"
+                className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
+              >
+                Research context
+              </Link>
               <Link
                 href="/instruments"
                 className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"

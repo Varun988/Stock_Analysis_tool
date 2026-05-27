@@ -50,17 +50,21 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "AI Workflow",
-    items: [
-      {
-        href: "/recommendations",
-        label: "Recommendations",
-      },
-      {
-        href: "/explanations",
-        label: "Explanations",
-      },
-    ],
+  label: "AI Workflow",
+  items: [
+    {
+      href: "/recommendations",
+      label: "Recommendations",
+    },
+    {
+      href: "/explanations",
+      label: "Explanations",
+    },
+    {
+      href: "/research",
+      label: "Research",
+    },
+  ],
   },
   {
     label: "History",
