@@ -1,12 +1,16 @@
+
+import { AIProviderStatusCard } from "@/components/dashboard/ai-provider-status-card";
 import { ProviderHealthList } from "@/components/dashboard/provider-health-list";
 import { StatusCard } from "@/components/dashboard/status-card";
-import { getBackendHealth, getProviderHealth } from "@/lib/api";
+import { getAIProviderStatus, getBackendHealth, getProviderHealth } from "@/lib/api";
+import { DashboardQuickStats } from "@/components/dashboard/dashboard-quick-stats";
 import Link from "next/link";
 export default async function Home() {
   try {
-    const [health, providerHealth] = await Promise.all([
+    const [health, providerHealth, aiStatus] = await Promise.all([
       getBackendHealth(),
       getProviderHealth(),
+      getAIProviderStatus(),
     ]);
 
     return (
@@ -82,7 +86,8 @@ export default async function Home() {
           </div>
 
           <ProviderHealthList providerHealth={providerHealth} />
-
+          <AIProviderStatusCard aiStatus={aiStatus} />
+          <DashboardQuickStats />
           <section className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
               <p className="text-sm uppercase tracking-wide text-slate-400">

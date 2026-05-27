@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.common.responses import success_response
 from app.recommendation_engine.service import (
     generate_recommendation,
     get_latest_recommendation,
+    list_recommendation_history,
 )
 
 
@@ -33,4 +34,24 @@ def fetch_latest_recommendation():
     return success_response(
         data=recommendation.model_dump(),
         message="Latest recommendation fetched successfully",
+    )
+
+
+@router.get("/history", response_model=dict)
+def fetch_recommendation_history(
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+        description="Maximum number of recommendations to return",
+    ),
+):
+    recommendations = list_recommendation_history(limit=limit)
+
+    return success_response(
+        data=[
+            recommendation.model_dump()
+            for recommendation in recommendations
+        ],
+        message="Recommendation history fetched successfully",
     )

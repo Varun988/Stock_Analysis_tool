@@ -8,6 +8,11 @@ from app.recommendation_engine.enums import (
     RecommendationAction,
     RecommendationReasonCode,
 )
+from app.recommendation_engine.repository import (
+    get_latest_recommendation_from_db,
+    list_recommendations_from_db,
+    save_recommendation,
+)
 from app.recommendation_engine.schemas import (
     AllocationPlanItem,
     RecommendationResponse,
@@ -36,6 +41,16 @@ RISK_ALLOCATION_WEIGHTS = {
     "moderate": {"MUTUAL_FUND": 50, "ETF": 40, "STOCK": 10},
     "high": {"MUTUAL_FUND": 30, "ETF": 40, "STOCK": 30},
 }
+
+
+def _store_latest_recommendation(
+    recommendation: RecommendationResponse,
+) -> RecommendationResponse:
+    global _LATEST_RECOMMENDATION
+
+    saved_recommendation = save_recommendation(recommendation)
+    _LATEST_RECOMMENDATION = saved_recommendation
+    return saved_recommendation
 
 
 def _create_missing_profile_recommendation() -> RecommendationResponse:
@@ -441,14 +456,11 @@ def _build_linked_instrument_risk_note() -> str:
 
 
 def generate_recommendation() -> RecommendationResponse:
-    global _LATEST_RECOMMENDATION
-
     profile = get_profile()
 
     if profile is None:
         recommendation = _create_missing_profile_recommendation()
-        _LATEST_RECOMMENDATION = recommendation
-        return recommendation
+        return _store_latest_recommendation(recommendation)
 
     risk_appetite = _get_profile_risk_appetite(profile)
     preferred_instrument_types = _get_preferred_instrument_types(profile)
@@ -467,8 +479,7 @@ def generate_recommendation() -> RecommendationResponse:
             risk_appetite=risk_appetite,
             preferred_instrument_types=preferred_instrument_types,
         )
-        _LATEST_RECOMMENDATION = recommendation
-        return recommendation
+        return _store_latest_recommendation(recommendation)
 
     if portfolio_summary.concentration_warning is not None:
         recommendation = _create_concentration_recommendation(
@@ -480,8 +491,7 @@ def generate_recommendation() -> RecommendationResponse:
             risk_appetite=risk_appetite,
             preferred_instrument_types=preferred_instrument_types,
         )
-        _LATEST_RECOMMENDATION = recommendation
-        return recommendation
+        return _store_latest_recommendation(recommendation)
 
     recommendation = _create_regular_recommendation(
         monthly_investment_amount=profile.monthly_investment_amount,
@@ -495,9 +505,18 @@ def generate_recommendation() -> RecommendationResponse:
         preferred_instrument_types=preferred_instrument_types,
     )
 
-    _LATEST_RECOMMENDATION = recommendation
-    return recommendation
+    return _store_latest_recommendation(recommendation)
 
 
 def get_latest_recommendation() -> RecommendationResponse | None:
+    latest_recommendation = get_latest_recommendation_from_db()
+
+    if latest_recommendation is not None:
+        return latest_recommendation
+
     return _LATEST_RECOMMENDATION
+
+def list_recommendation_history(
+    limit: int = 20,
+) -> list[RecommendationResponse]:
+    return list_recommendations_from_db(limit=limit)
