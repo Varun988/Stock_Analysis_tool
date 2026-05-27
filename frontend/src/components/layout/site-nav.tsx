@@ -43,6 +43,10 @@ const navGroups: NavGroup[] = [
         href: "/portfolio",
         label: "Holdings",
       },
+      {
+        href: "/upload",
+        label: "Upload Statement",
+      },
     ],
   },
   {
