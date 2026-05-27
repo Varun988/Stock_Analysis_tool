@@ -13,7 +13,7 @@ from app.market_data.routes import router as market_data_router
 from app.metrics.routes import router as metrics_router
 from app.risk_engine.routes import router as risk_router
 from app.explanation_engine.routes import router as explanation_router
-
+from app.ai_engine.routes import router as ai_engine_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -50,7 +50,7 @@ app.include_router(
     recommendation_router,
     prefix=settings.api_v1_prefix,
 )
-
+app.include_router(ai_engine_router, prefix=settings.api_v1_prefix)
 
 @app.get("/")
 def root():

@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     indianapi_base_url: str = "https://stock.indianapi.in"
     indianapi_api_key: str | None = None
+    ai_explanation_provider: str = "MOCK"
+
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"
 
     class Config:
         env_file = ".env"
