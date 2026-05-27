@@ -25,6 +25,10 @@ const navItems = [
     label: "Recommendations",
   },
   {
+  href: "/recommendations/history",
+  label: "Recommendation History",
+  },
+  {
     href: "/explanations",
     label: "Explanations",
   },
