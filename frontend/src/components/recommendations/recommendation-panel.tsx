@@ -2,6 +2,18 @@
 
 import { useEffect, useState } from "react";
 
+type AllocationPlanItem = {
+  instrument_type: string;
+  amount: number;
+  reason: string;
+};
+
+type ScoreBreakdown = {
+  diversification_score: number;
+  risk_suitability_score: number;
+  preference_match_score: number;
+};
+
 type Recommendation = {
   recommendation_id: string;
   suggested_action: string;
@@ -10,6 +22,8 @@ type Recommendation = {
   reason_codes: string[];
   risk_note: string;
   disclaimer: string;
+  allocation_plan?: AllocationPlanItem[];
+  score_breakdown?: ScoreBreakdown | null;
 };
 
 function formatCurrency(value: number) {
@@ -25,6 +39,18 @@ function formatLabel(value: string) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\w/g, (character) => character.toUpperCase());
+}
+
+function getScoreTone(score: number) {
+  if (score >= 75) {
+    return "text-emerald-300";
+  }
+
+  if (score >= 50) {
+    return "text-amber-300";
+  }
+
+  return "text-red-300";
 }
 
 export function RecommendationPanel() {
@@ -194,6 +220,82 @@ export function RecommendationPanel() {
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
+              {recommendation.allocation_plan &&
+              recommendation.allocation_plan.length > 0 ? (
+                <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-5">
+                  <p className="text-sm uppercase tracking-wide text-emerald-300">
+                    Suggested Monthly Allocation
+                  </p>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {recommendation.allocation_plan.map((item) => (
+                      <div
+                        key={item.instrument_type}
+                        className="rounded-lg border border-emerald-500/20 bg-slate-900 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold">
+                              {formatLabel(item.instrument_type)}
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-300">
+                              {item.reason}
+                            </p>
+                          </div>
+
+                          <p className="text-lg font-bold text-emerald-300">
+                            {formatCurrency(item.amount)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {recommendation.score_breakdown ? (
+                <div className="mt-6 rounded-xl border border-slate-700 bg-slate-800 p-5">
+                  <p className="text-sm uppercase tracking-wide text-slate-400">
+                    Score Breakdown
+                  </p>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
+                      <p className="text-sm text-slate-400">Diversification</p>
+                      <p
+                        className={`mt-2 text-2xl font-semibold ${getScoreTone(
+                          recommendation.score_breakdown.diversification_score,
+                        )}`}
+                      >
+                        {recommendation.score_breakdown.diversification_score}/100
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
+                      <p className="text-sm text-slate-400">Risk Suitability</p>
+                      <p
+                        className={`mt-2 text-2xl font-semibold ${getScoreTone(
+                          recommendation.score_breakdown.risk_suitability_score,
+                        )}`}
+                      >
+                        {recommendation.score_breakdown.risk_suitability_score}/100
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
+                      <p className="text-sm text-slate-400">Preference Match</p>
+                      <p
+                        className={`mt-2 text-2xl font-semibold ${getScoreTone(
+                          recommendation.score_breakdown.preference_match_score,
+                        )}`}
+                      >
+                        {recommendation.score_breakdown.preference_match_score}/100
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {recommendation.reason_codes.map((reasonCode) => (
                 <span
                   key={reasonCode}
