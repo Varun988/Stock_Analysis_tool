@@ -1,11 +1,12 @@
+from datetime import date
 from uuid import uuid4
-
 from app.portfolio.schemas import (
     PortfolioHoldingCreate,
     PortfolioHoldingResponse,
     PortfolioSummaryResponse,
 )
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.portfolio.models import PortfolioHolding as DBHolding
@@ -108,7 +109,11 @@ def create_holding(
 ) -> PortfolioHoldingResponse:
     db: Session = SessionLocal()
 
+    snapshot_date = holding_data.snapshot_date or date.today()
+
     holding = DBHolding(
+        source_upload_id=holding_data.source_upload_id,
+        snapshot_date=snapshot_date,
         instrument_id=holding_data.instrument_id,
         instrument_name=holding_data.instrument_name,
         instrument_type=holding_data.instrument_type.value,
@@ -129,18 +134,47 @@ def create_holding(
         holding_data.current_value,
     )
 
+    response_data = holding_data.model_dump()
+    response_data["source_upload_id"] = holding.source_upload_id
+    response_data["snapshot_date"] = holding.snapshot_date
+
     return PortfolioHoldingResponse(
         holding_id=str(holding.id),
         gain_loss=gain_loss,
         gain_loss_percent=gain_loss_percent,
-        **holding_data.model_dump(),
+        **response_data,
     )
 
+def _get_latest_snapshot_date(db: Session) -> date | None:
+    return db.query(func.max(DBHolding.snapshot_date)).scalar()
 
-def list_holdings() -> list[PortfolioHoldingResponse]:
+
+def delete_holdings_for_snapshot(snapshot_date: date) -> int:
     db: Session = SessionLocal()
 
-    holdings = db.query(DBHolding).all()
+    deleted_count = (
+        db.query(DBHolding)
+        .filter(DBHolding.snapshot_date == snapshot_date)
+        .delete()
+    )
+
+    db.commit()
+    db.close()
+
+    return deleted_count
+
+def list_holdings(latest_only: bool = True) -> list[PortfolioHoldingResponse]:
+    db: Session = SessionLocal()
+
+    query = db.query(DBHolding)
+
+    if latest_only:
+        latest_snapshot_date = _get_latest_snapshot_date(db)
+
+        if latest_snapshot_date is not None:
+            query = query.filter(DBHolding.snapshot_date == latest_snapshot_date)
+
+    holdings = query.all()
 
     result = []
 
@@ -152,7 +186,10 @@ def list_holdings() -> list[PortfolioHoldingResponse]:
 
         result.append(
             PortfolioHoldingResponse(
+
                 holding_id=str(h.id),
+                source_upload_id=h.source_upload_id,
+                snapshot_date=h.snapshot_date,
                 instrument_id=h.instrument_id,
                 instrument_name=h.instrument_name,
                 instrument_type=h.instrument_type,
@@ -161,7 +198,8 @@ def list_holdings() -> list[PortfolioHoldingResponse]:
                 invested_amount=h.invested_amount,
                 current_value=h.current_value,
                 gain_loss=gain_loss,
-                gain_loss_percent=gain_loss_percent,
+                gain_loss_percent=gain_loss_percent
+
             )
         )
 

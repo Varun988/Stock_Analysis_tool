@@ -1,0 +1,18 @@
+Portfolio Holdings Statement
+
+Nippon India ETF Nifty 50 BeES
+Type: ETF
+Symbol: NIFTYBEES
+ISIN: INF204KB14I2
+Quantity: 8
+Average Cost: 240
+Invested Amount: 1920
+Current Value: 2000
+
+UTI Nifty 50 Index Fund
+Type: MUTUAL_FUND
+ISIN: INF789F01059
+Units: 10
+Average Cost: 120
+Invested Amount: 1200
+Current Value: 1250

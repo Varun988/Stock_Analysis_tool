@@ -8,16 +8,24 @@
 
 ## 1. Project Summary
 
-The **Stock Analysis Tool** helps a beginner investor understand their portfolio, track holdings, analyze market data, generate monthly investment suggestions, and receive beginner-friendly explanations using AI.
+The **Stock Analysis Tool** helps a beginner investor understand their portfolio, track holdings, import portfolio statements, analyze market data, generate monthly investment suggestions, and receive beginner-friendly explanations using AI.
 
 The project was designed around one core principle:
 
 ```text
 Recommendation Engine decides using transparent backend logic.
 AI explains the recommendation in simple language.
+AI may extract holdings from uploaded statements, but backend validation controls import.
 ```
 
-The system does **not** blindly ask AI to pick stocks or predict the market. Instead, the backend performs structured analysis using profile data, portfolio holdings, market data, risk rules, allocation checks, and scoring logic. AI is used only to explain the backend-generated output in a beginner-friendly way.
+The system does **not** blindly ask AI to pick stocks or predict the market. Instead, the backend performs structured analysis using profile data, portfolio holdings, market data, risk rules, allocation checks, and scoring logic.
+
+AI is used for:
+
+1. Explaining backend-generated recommendations
+2. Extracting holdings from unstructured statement text into structured JSON
+
+The backend still validates and controls the final import and recommendation logic.
 
 ---
 
@@ -33,12 +41,15 @@ Beginner investors often struggle with questions like:
 - What does risk suitability or diversification score mean?
 - How did previous recommendations change over time?
 - Can AI explain the recommendation without making risky predictions?
+- Can I upload my statement instead of manually entering every holding?
+- Can the backend extract holdings from statements in a platform-independent way?
 
 This project solves those problems by combining:
 
 ```text
 Investor Profile
-+ Portfolio Holdings
++ Portfolio Holdings / Imported Snapshots
++ Statement Extraction
 + Market Data Providers
 + Risk Rules
 + Recommendation Scoring
@@ -60,7 +71,14 @@ The project is currently a strong demo-ready MVP with:
 ✅ Investor profile module
 ✅ Instrument management module
 ✅ Portfolio holdings module
+✅ Snapshot-based portfolio holdings
 ✅ Portfolio allocation charts
+✅ CSV/XLSX deterministic portfolio extraction
+✅ CSV/XLSX direct portfolio import
+✅ Gemini-based TXT/unstructured statement extraction
+✅ Reviewed holdings import
+✅ Duplicate protection for same-day snapshot imports
+✅ Latest snapshot portfolio summary
 ✅ Market data provider abstraction
 ✅ Manual market data provider
 ✅ MFAPI mutual fund provider
@@ -81,7 +99,7 @@ The project is currently a strong demo-ready MVP with:
 ✅ Dashboard provider status
 ✅ Dashboard quick stats
 ✅ Grouped navigation UX
-✅ Final smoke test completed
+✅ Backend upload-to-recommendation flow verified
 ```
 
 Estimated completion:
@@ -89,6 +107,32 @@ Estimated completion:
 ```text
 Demo / resume-ready MVP: 95% complete
 Production-grade readiness: 70–75% complete
+```
+
+### Current Important Gap
+
+The backend upload/import flow is ready, but the frontend upload/review/import page is still pending.
+
+Current backend supports:
+
+```text
+Upload file
+→ extract holdings
+→ validate holdings
+→ reviewed import
+→ latest snapshot summary
+→ recommendation
+```
+
+Frontend still needs:
+
+```text
+Upload page
+→ extracted holdings preview table
+→ valid/invalid rows UI
+→ import reviewed holdings button
+→ refresh portfolio summary
+→ generate recommendation after import
 ```
 
 ---
@@ -116,6 +160,8 @@ Production-grade readiness: 70–75% complete
 - **Google Gemini through `google-genai`**
 - Mock AI provider for local development
 - Configurable AI provider architecture
+- Gemini used for explanations
+- Gemini reused for unstructured statement extraction
 
 ### Market Data Providers
 
@@ -155,7 +201,7 @@ Detailed backend flow:
 ```text
 Profile Engine
  ↓
-Portfolio Engine
+Portfolio Engine / Latest Snapshot
  ↓
 Market Data Providers
  ↓
@@ -168,6 +214,31 @@ Recommendation Engine
 AI Explanation Engine
  ↓
 Frontend UI + History Persistence
+```
+
+Portfolio import flow:
+
+```text
+Uploaded file
+ ↓
+Detect file type
+ ↓
+CSV/XLSX → deterministic extraction
+TXT/unstructured → Gemini extraction
+ ↓
+Validate extracted rows
+ ↓
+Return valid_holdings and invalid_holdings
+ ↓
+User/frontend reviews rows
+ ↓
+Import reviewed holdings
+ ↓
+Create snapshot and replace same-day snapshot holdings
+ ↓
+Portfolio summary uses latest snapshot
+ ↓
+Recommendation can be generated
 ```
 
 ---
@@ -200,7 +271,25 @@ The backend creates structured data such as:
 
 Gemini then explains that output in plain English.
 
-### 6.2 No Market Prediction
+### 6.2 AI Extracts, Backend Validates
+
+Gemini can extract holdings from unstructured uploaded statement text.
+
+However, Gemini extraction is never blindly trusted.
+
+Safe flow:
+
+```text
+Gemini extracts candidate holdings
+→ backend validates required fields and numeric values
+→ valid_holdings and invalid_holdings are returned
+→ user/frontend reviews rows
+→ backend imports reviewed holdings only
+```
+
+This reduces parser work while keeping control inside the backend.
+
+### 6.3 No Market Prediction
 
 The project does not say:
 
@@ -219,11 +308,27 @@ This holding is concentrated and should be reviewed.
 Market data is used for context, not guaranteed prediction.
 ```
 
-### 6.3 Portfolio-Aware Recommendations
+### 6.4 Portfolio-Aware Recommendations
 
-The system does not treat every month as a fresh start. It analyzes existing portfolio holdings and then suggests how future monthly investment may be allocated.
+The system does not treat every month as a fresh start. It analyzes existing portfolio holdings from the latest snapshot and then suggests how future monthly investment may be allocated.
 
-### 6.4 Extensible Provider Architecture
+### 6.5 Snapshot-Based Portfolio Safety
+
+The backend stores imported holdings as snapshots.
+
+Each import batch receives:
+
+```text
+source_upload_id
+snapshot_date
+created_at
+```
+
+The latest snapshot is used for portfolio summary.
+
+If the same snapshot date is imported again, existing holdings for that date are replaced first. This prevents duplicate imports from double-counting holdings.
+
+### 6.6 Extensible Provider Architecture
 
 Market data providers are isolated behind a provider registry. This makes it easier to add or replace providers later.
 
@@ -331,12 +436,6 @@ preferred_instruments
 preferred_market
 ```
 
-Example use:
-
-```text
-A beginner investor with ₹2,000 monthly investment and moderate risk appetite will receive safer and more diversified recommendations than an advanced high-risk investor.
-```
-
 Main APIs:
 
 ```http
@@ -361,19 +460,6 @@ Responsibilities:
 - Normalizes instruments through symbol, ISIN, AMFI scheme code
 - Links portfolio holdings to known instruments
 - Helps market data provider resolution
-
-Instrument fields:
-
-```text
-instrument_id
-name
-instrument_type
-market
-symbol
-isin
-amfi_scheme_code
-category
-```
 
 Supported instrument types:
 
@@ -404,16 +490,21 @@ backend/app/portfolio/
 Responsibilities:
 
 - Stores holdings
+- Stores snapshot metadata
 - Calculates gain/loss
 - Calculates portfolio summary
 - Calculates allocation by instrument
 - Calculates allocation by instrument type
 - Detects concentration risk
+- Uses latest snapshot by default
 
 Holding fields:
 
 ```text
 holding_id
+source_upload_id
+snapshot_date
+created_at
 instrument_id
 instrument_name
 instrument_type
@@ -460,13 +551,25 @@ backend/app/portfolio_import/
 
 Purpose:
 
-The original long-term design includes statement/CAS upload so the app does not depend only on Groww or any one broker.
+The portfolio import module lets the app import holdings from files instead of depending only on manual entry or one broker API.
 
-Current MVP status:
+Current backend status:
 
 ```text
-Manual holding entry is implemented.
-Statement/CAS parsing is planned for future enhancement.
+✅ CSV/XLSX deterministic extraction
+✅ CSV/XLSX direct import
+✅ TXT/unstructured Gemini extraction
+✅ Reviewed holdings import
+✅ Snapshot-based duplicate protection
+```
+
+Current import sources:
+
+```text
+CSV statement
+Excel statement
+TXT/unstructured statement text
+Manual reviewed holdings JSON
 ```
 
 Future import sources:
@@ -474,35 +577,45 @@ Future import sources:
 ```text
 Groww statement upload
 CAS statement upload
-CSV/Excel statement
-Manual entry
+Broker-specific PDFs
+XML files
+Scanned/image statements through OCR
 Future broker APIs
 ```
 
-Future import flow:
+Import flow:
 
 ```text
 Upload file
  ↓
 Detect file type
  ↓
-Parse holdings/transactions
+Extract holdings
  ↓
 Validate extracted data
  ↓
-Normalize instrument names
+Return preview
  ↓
-Match by ISIN / symbol / AMFI code
+Import reviewed holdings
  ↓
-Store holdings and transactions
+Create latest snapshot
  ↓
-Delete original file by default
+Portfolio summary updates
 ```
 
 Privacy principle:
 
 ```text
 Store parsed fields only. Do not store original sensitive documents unless explicitly required.
+```
+
+Portfolio import APIs:
+
+```http
+POST /api/v1/portfolio/uploads/file
+POST /api/v1/portfolio/uploads/file/import
+POST /api/v1/portfolio/uploads/file/extract
+POST /api/v1/portfolio/uploads/import-reviewed
 ```
 
 ---
@@ -522,21 +635,6 @@ Responsibilities:
 - Resolves provider-specific instrument IDs
 - Exposes provider health/status APIs
 
-Market data snapshot fields:
-
-```text
-snapshot_id
-instrument_id
-data_date
-open_price
-high_price
-low_price
-close_price
-nav
-volume
-source
-```
-
 Main APIs:
 
 ```http
@@ -550,93 +648,7 @@ POST /api/v1/market-data/snapshots
 
 ---
 
-### 7.9 Market Data Providers
-
-Provider path:
-
-```text
-backend/app/market_data/providers/
-```
-
-#### MANUAL Provider
-
-Reads manually stored snapshots from PostgreSQL.
-
-Useful for:
-
-```text
-Testing
-Fallback data
-Manually inserted snapshots
-```
-
-#### MFAPI Provider
-
-Fetches Indian mutual fund NAV data by AMFI scheme code.
-
-Useful for:
-
-```text
-Mutual fund latest NAV
-Mutual fund NAV history
-```
-
-#### YFINANCE Provider
-
-Fetches ETF/stock price data using Yahoo Finance-style symbols.
-
-Useful for:
-
-```text
-ETF historical price
-Stock price history
-Fallback market data
-```
-
-Known limitation:
-
-```text
-May face rate limits and is not a production-grade licensed data source.
-```
-
-#### INDIANAPI Provider
-
-India-focused provider support with API-key configuration.
-
-Useful for:
-
-```text
-Indian stocks
-Indian ETFs
-India-specific provider architecture
-```
-
-#### AMFI Provider
-
-Fetches and parses latest mutual fund NAV from AMFI NAVAll text data.
-
-Current support:
-
-```text
-Latest NAV: implemented
-History endpoint: returns latest-only snapshot
-Full historical parser: planned
-```
-
-Example AMFI output:
-
-```json
-{
-  "instrument_id": "119551",
-  "data_date": "2026-05-26",
-  "nav": 104.5269,
-  "source": "AMFI"
-}
-```
-
----
-
-### 7.10 Metrics Engine
+### 7.9 Metrics Engine
 
 Path:
 
@@ -650,16 +662,6 @@ Responsibilities:
 - Uses source-aware market data
 - Feeds risk engine and recommendations
 
-Example metrics:
-
-```text
-start_value
-latest_value
-absolute_return
-return_percent
-data_points
-```
-
 Main API:
 
 ```http
@@ -668,7 +670,7 @@ GET /api/v1/metrics/{instrument_id}/basic-performance
 
 ---
 
-### 7.11 Risk Engine
+### 7.10 Risk Engine
 
 Path:
 
@@ -697,15 +699,9 @@ Main API:
 GET /api/v1/risk/{instrument_id}/basic
 ```
 
-Example risk note:
-
-```text
-Reliance Industries: MODERATE risk based on INDIANAPI market data.
-```
-
 ---
 
-### 7.12 Recommendation Engine
+### 7.11 Recommendation Engine
 
 Path:
 
@@ -716,7 +712,7 @@ backend/app/recommendation_engine/
 Responsibilities:
 
 - Reads investor profile
-- Reads portfolio summary
+- Reads latest portfolio summary
 - Detects missing diversification
 - Detects concentration risk
 - Builds monthly allocation plan
@@ -742,52 +738,6 @@ REVIEW_PORTFOLIO_DIVERSIFICATION
 DIVERSIFY_MONTHLY_INVESTMENT
 ```
 
-Reason codes include:
-
-```text
-PROFILE_AVAILABLE
-PROFILE_MISSING
-PORTFOLIO_AVAILABLE
-PORTFOLIO_EMPTY
-PORTFOLIO_CONCENTRATION_WARNING
-DIVERSIFICATION_REVIEW_NEEDED
-RISK_PROFILE_CONSIDERED
-PREFERRED_INSTRUMENTS_CONSIDERED
-ALLOCATION_PLAN_CREATED
-```
-
-Allocation plan example:
-
-```json
-[
-  {
-    "instrument_type": "MUTUAL_FUND",
-    "amount": 1000,
-    "reason": "Adds diversified professionally managed exposure."
-  },
-  {
-    "instrument_type": "ETF",
-    "amount": 800,
-    "reason": "Adds broad-market exposure in a simple and transparent way."
-  },
-  {
-    "instrument_type": "STOCK",
-    "amount": 200,
-    "reason": "Adds direct equity exposure."
-  }
-]
-```
-
-Score breakdown example:
-
-```json
-{
-  "diversification_score": 55,
-  "risk_suitability_score": 80,
-  "preference_match_score": 100
-}
-```
-
 Persistence:
 
 ```text
@@ -798,7 +748,7 @@ Recommendations survive backend restart.
 
 ---
 
-### 7.13 AI Engine
+### 7.12 AI Engine
 
 Path:
 
@@ -826,37 +776,11 @@ MOCK
 GEMINI
 ```
 
-Environment variables:
-
-```env
-AI_EXPLANATION_PROVIDER=GEMINI
-GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.5-flash
-```
-
-#### Mock AI Provider
-
-Used for local development and testing.
-
 #### Gemini AI Provider
 
 Uses Google Gemini to generate beginner-friendly explanations.
 
-Gemini receives structured backend data:
-
-```text
-recommendation_id
-suggested_action
-suggested_amount
-summary
-reason_codes
-risk_note
-disclaimer
-allocation_plan
-score_breakdown
-```
-
-Gemini returns structured JSON:
+Gemini receives structured backend data and returns structured JSON:
 
 ```json
 {
@@ -866,9 +790,11 @@ Gemini returns structured JSON:
 }
 ```
 
+Gemini is also reused by portfolio import logic to extract holdings from unstructured statement text.
+
 ---
 
-### 7.14 Explanation Engine
+### 7.13 Explanation Engine
 
 Path:
 
@@ -890,19 +816,6 @@ Main APIs:
 POST /api/v1/explanations/recommendation
 GET /api/v1/explanations/latest
 GET /api/v1/explanations/history
-```
-
-Persisted explanation fields:
-
-```text
-explanation_id
-recommendation_id
-provider
-beginner_summary
-explanation
-risk_explanation
-disclaimer
-created_at
 ```
 
 Explanations survive backend restart.
@@ -962,17 +875,6 @@ AI provider status
 Quick stats
 ```
 
-Quick stats include:
-
-```text
-Total invested
-Current portfolio value
-Gain/loss
-Number of holdings
-Latest recommendation
-Latest explanation provider
-```
-
 ---
 
 ### 8.3 Profile Page
@@ -988,8 +890,6 @@ Purpose:
 ```text
 Create and update investor profile.
 ```
-
-Used by recommendation engine.
 
 ---
 
@@ -1007,8 +907,6 @@ Purpose:
 Create and list instruments like stocks, ETFs, and mutual funds.
 ```
 
-Important for linking portfolio holdings to market data providers.
-
 ---
 
 ### 8.5 Portfolio Page
@@ -1023,7 +921,7 @@ frontend/src/components/portfolio/portfolio-holdings-manager.tsx
 Features:
 
 ```text
-Add holdings
+Add holdings manually
 Link holdings to instruments
 Show total invested
 Show current value
@@ -1031,14 +929,46 @@ Show gain/loss
 Show allocation by instrument type
 Show allocation by instrument
 Show concentration warning
-Show saved holdings
+Show saved holdings from latest snapshot
 ```
 
 Charts are implemented with CSS/Tailwind bars, so no additional chart library is needed.
 
 ---
 
-### 8.6 Recommendations Page
+### 8.6 Planned Upload Page
+
+Suggested path:
+
+```text
+frontend/src/app/upload/
+```
+
+Planned features:
+
+```text
+Upload CSV/XLSX/TXT/PDF statement
+Call extraction API
+Show valid extracted holdings
+Show invalid extracted holdings
+Allow review/correction
+Import reviewed holdings
+Refresh portfolio summary
+Generate recommendation after import
+```
+
+Backend APIs already available for this:
+
+```http
+POST /api/v1/portfolio/uploads/file/extract
+POST /api/v1/portfolio/uploads/import-reviewed
+GET /api/v1/portfolio/summary
+POST /api/v1/recommendations/generate
+```
+
+---
+
+### 8.7 Recommendations Page
 
 Path:
 
@@ -1063,7 +993,7 @@ Show disclaimer
 
 ---
 
-### 8.7 Explanations Page
+### 8.8 Explanations Page
 
 Path:
 
@@ -1082,11 +1012,9 @@ Show risk explanation
 Show disclaimer
 ```
 
-The frontend proxy safely handles backend errors and avoids JSON parsing crashes.
-
 ---
 
-### 8.8 Recommendation History Page
+### 8.9 Recommendation History Page
 
 Path:
 
@@ -1111,7 +1039,7 @@ Shows risk note
 
 ---
 
-### 8.9 Explanation History Page
+### 8.10 Explanation History Page
 
 Path:
 
@@ -1166,6 +1094,15 @@ GET /api/v1/instruments/{instrument_id}
 POST /api/v1/portfolio/holdings
 GET /api/v1/portfolio/holdings
 GET /api/v1/portfolio/summary
+```
+
+### Portfolio Import
+
+```http
+POST /api/v1/portfolio/uploads/file
+POST /api/v1/portfolio/uploads/file/import
+POST /api/v1/portfolio/uploads/file/extract
+POST /api/v1/portfolio/uploads/import-reviewed
 ```
 
 ### Market Data
@@ -1284,19 +1221,70 @@ frontend/.env.local
 
 ---
 
+### 10.4 Backend Migration Note
+
+If the `portfolio_holdings` table already exists, snapshot columns may need to be added.
+
+Expected columns:
+
+```text
+source_upload_id
+snapshot_date
+created_at
+```
+
+During development, a temporary migration script can be run from the backend virtual environment:
+
+```bash
+cd backend
+source .venv/bin/activate
+python migrate_portfolio_holdings_snapshot.py
+```
+
+If the system says SQLAlchemy is missing, confirm the virtual environment is activated.
+
+---
+
 ## 11. Recommended User Flow
+
+### Current UI Flow
 
 ```text
 1. Open Dashboard
 2. Create investor profile
 3. Create instruments
-4. Add portfolio holdings
+4. Add portfolio holdings manually
 5. View portfolio charts
 6. Generate recommendation
 7. Generate AI explanation
 8. View recommendation history
 9. View explanation history
 10. Restart backend and confirm persisted data still exists
+```
+
+### Backend Upload Flow Already Available
+
+```text
+1. Upload CSV/XLSX/TXT file through Swagger or API client
+2. Extract holdings
+3. Review valid_holdings and invalid_holdings
+4. Import reviewed holdings
+5. Check portfolio summary
+6. Generate recommendation
+7. Generate explanation
+```
+
+### Planned Frontend Upload Flow
+
+```text
+1. Open Upload page
+2. Select portfolio statement
+3. Extract holdings
+4. Review extracted rows
+5. Import reviewed holdings
+6. Portfolio summary refreshes
+7. Generate recommendation
+8. Generate explanation
 ```
 
 ---
@@ -1311,7 +1299,12 @@ frontend/.env.local
 ✅ Instruments load/create
 ✅ Portfolio loads/create
 ✅ Portfolio charts show
-✅ Recommendation generates
+✅ CSV extraction succeeds
+✅ TXT Gemini extraction succeeds
+✅ Reviewed import succeeds
+✅ Duplicate snapshot handling works
+✅ Portfolio summary uses latest snapshot
+✅ Recommendation generates after imported holdings
 ✅ Recommendation history loads
 ✅ Explanation generates
 ✅ Explanation history loads
@@ -1328,7 +1321,13 @@ frontend/.env.local
 ```text
 - No authentication yet
 - No Alembic migrations yet
-- Portfolio statement/CAS parsing not fully implemented yet
+- Frontend upload/review/import UI not implemented yet
+- CAS PDF parser not fully implemented yet
+- Broker-specific PDF parser not implemented yet
+- OCR for scanned statements not implemented yet
+- XML-specific parser not implemented yet
+- Transaction import not implemented yet
+- Automatic instrument matching by ISIN/symbol/AMFI code not fully implemented yet
 - AMFI historical NAV parser not implemented yet
 - Recommendation scoring is educational and rule-based, not a licensed advisory engine
 - Market data providers may have rate limits or API constraints
@@ -1340,9 +1339,27 @@ frontend/.env.local
 
 ## 14. Future Roadmap
 
+### Completed Recently
+
+```text
+CSV/XLSX portfolio extraction
+CSV/XLSX direct import
+Gemini-based statement extraction
+Reviewed holdings import
+Snapshot-based duplicate protection
+Latest snapshot portfolio summary
+Backend upload-to-recommendation flow
+```
+
 ### High Priority
 
 ```text
+Frontend upload page
+Extracted holdings preview table
+Valid/invalid row review UI
+Import reviewed holdings from frontend
+Refresh portfolio after import
+Generate recommendation after upload
 Automated backend tests
 Frontend smoke tests
 Deployment guide
@@ -1354,12 +1371,16 @@ Error handling polish
 
 ```text
 CAS statement upload
-CSV/Excel portfolio import
+Broker-specific PDF import
+OCR for scanned statements
+XML parser
+Transaction import
 AMFI historical NAV parser
 Recommendation detail pages
 Explanation detail pages
 Advanced metrics: volatility, drawdown, CAGR
 Portfolio snapshots over time
+Instrument matching by ISIN/symbol/AMFI code
 ```
 
 ### AI and Research Enhancements
@@ -1370,6 +1391,8 @@ OpenAI provider
 Azure OpenAI provider
 Learning assistant
 Natural language portfolio questions
+MCP-compatible AI tools
+Agentic orchestration
 ```
 
 ### Production Enhancements
@@ -1384,6 +1407,7 @@ Provider caching
 Monitoring and logging
 Docker deployment
 Cloud deployment
+Sensitive data masking before LLM calls
 ```
 
 ---
