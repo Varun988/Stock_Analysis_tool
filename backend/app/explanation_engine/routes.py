@@ -13,7 +13,13 @@ router = APIRouter(prefix="/explanations", tags=["Explanation Engine"])
 
 @router.post("/recommendation", response_model=dict)
 def explain_latest_recommendation():
-    explanation = generate_latest_recommendation_explanation()
+    try:
+        explanation = generate_latest_recommendation_explanation()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
     if explanation is None:
         raise HTTPException(
@@ -25,7 +31,6 @@ def explain_latest_recommendation():
         data=explanation.model_dump(),
         message="Recommendation explanation generated successfully",
     )
-
 
 @router.get("/latest", response_model=dict)
 def fetch_latest_explanation():
