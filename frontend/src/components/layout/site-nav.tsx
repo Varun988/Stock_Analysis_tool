@@ -32,6 +32,10 @@ const navItems = [
     href: "/explanations",
     label: "Explanations",
   },
+  {
+  href: "/explanations/history",
+  label: "Explanation History",
+  },
 ];
 
 function isActivePath(currentPath: string, href: string) {
