@@ -93,3 +93,24 @@ def get_latest_explanation_from_db() -> RecommendationExplanationResponse | None
         return _row_to_explanation(row)
     finally:
         db.close()
+
+def list_explanations_from_db(
+    limit: int = 20,
+) -> list[RecommendationExplanationResponse]:
+    db = SessionLocal()
+
+    try:
+        statement = (
+            select(explanations_table)
+            .order_by(desc(explanations_table.c.created_at))
+            .limit(limit)
+        )
+
+        rows = db.execute(statement).mappings().all()
+
+        return [
+            _row_to_explanation(row)
+            for row in rows
+        ]
+    finally:
+        db.close()

@@ -9,6 +9,7 @@ from app.ai_engine.schemas import (
 from app.ai_engine.service import generate_ai_explanation
 from app.explanation_engine.repository import (
     get_latest_explanation_from_db,
+    list_explanations_from_db,
     save_explanation,
 )
 from app.explanation_engine.schemas import RecommendationExplanationResponse
@@ -84,3 +85,8 @@ def get_latest_explanation() -> RecommendationExplanationResponse | None:
         return latest_explanation
 
     return _LATEST_EXPLANATION
+
+def list_explanation_history(
+    limit: int = 20,
+) -> list[RecommendationExplanationResponse]:
+    return list_explanations_from_db(limit=limit)

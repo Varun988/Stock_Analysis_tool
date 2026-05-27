@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 
 from app.common.responses import success_response
 from app.explanation_engine.service import (
     generate_latest_recommendation_explanation,
     get_latest_explanation,
+    list_explanation_history,
 )
 
 
@@ -39,4 +40,24 @@ def fetch_latest_explanation():
     return success_response(
         data=explanation.model_dump(),
         message="Latest explanation fetched successfully",
+    )
+
+
+@router.get("/history", response_model=dict)
+def fetch_explanation_history(
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+        description="Maximum number of explanations to return",
+    ),
+):
+    explanations = list_explanation_history(limit=limit)
+
+    return success_response(
+        data=[
+            explanation.model_dump()
+            for explanation in explanations
+        ],
+        message="Explanation history fetched successfully",
     )
