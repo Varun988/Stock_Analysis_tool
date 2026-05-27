@@ -116,3 +116,24 @@ def get_latest_recommendation_from_db() -> RecommendationResponse | None:
         return _row_to_recommendation(row)
     finally:
         db.close()
+
+def list_recommendations_from_db(
+    limit: int = 20,
+) -> list[RecommendationResponse]:
+    db = SessionLocal()
+
+    try:
+        statement = (
+            select(recommendations_table)
+            .order_by(desc(recommendations_table.c.recommendation_date))
+            .limit(limit)
+        )
+
+        rows = db.execute(statement).mappings().all()
+
+        return [
+            _row_to_recommendation(row)
+            for row in rows
+        ]
+    finally:
+        db.close()

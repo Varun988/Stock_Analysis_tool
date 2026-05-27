@@ -10,6 +10,7 @@ from app.recommendation_engine.enums import (
 )
 from app.recommendation_engine.repository import (
     get_latest_recommendation_from_db,
+    list_recommendations_from_db,
     save_recommendation,
 )
 from app.recommendation_engine.schemas import (
@@ -514,3 +515,8 @@ def get_latest_recommendation() -> RecommendationResponse | None:
         return latest_recommendation
 
     return _LATEST_RECOMMENDATION
+
+def list_recommendation_history(
+    limit: int = 20,
+) -> list[RecommendationResponse]:
+    return list_recommendations_from_db(limit=limit)
