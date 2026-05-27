@@ -12,6 +12,7 @@ from app.recommendation_engine.schemas import (
     RecommendationResponse,
     RecommendationScoreBreakdown,
 )
+from app.research.schemas import ResearchContextResponse
 
 metadata = MetaData()
 
@@ -28,6 +29,7 @@ recommendations_table = Table(
     Column("disclaimer", Text, nullable=False),
     Column("allocation_plan", JSON, nullable=False),
     Column("score_breakdown", JSON, nullable=True),
+    Column("research_context", JSON, nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False),
     extend_existing=True,
 )
@@ -61,6 +63,11 @@ def save_recommendation(recommendation: RecommendationResponse) -> Recommendatio
                     if recommendation.score_breakdown is not None
                     else None
                 ),
+                research_context=(
+                    recommendation.research_context.model_dump(mode="json")
+                    if recommendation.research_context is not None
+                    else None
+                ),
                 created_at=datetime.now(recommendation.recommendation_date.tzinfo),
             )
         )
@@ -79,6 +86,11 @@ def _row_to_recommendation(row) -> RecommendationResponse:
     if row.score_breakdown is not None:
         score_breakdown = RecommendationScoreBreakdown(**row.score_breakdown)
 
+    research_context = None
+
+    if row.get("research_context") is not None:
+        research_context = ResearchContextResponse(**row.research_context)
+
     return RecommendationResponse(
         recommendation_id=row.recommendation_id,
         recommendation_date=row.recommendation_date,
@@ -96,6 +108,7 @@ def _row_to_recommendation(row) -> RecommendationResponse:
             for item in row.allocation_plan
         ],
         score_breakdown=score_breakdown,
+        research_context=research_context,
     )
 
 
@@ -116,6 +129,7 @@ def get_latest_recommendation_from_db() -> RecommendationResponse | None:
         return _row_to_recommendation(row)
     finally:
         db.close()
+
 
 def list_recommendations_from_db(
     limit: int = 20,

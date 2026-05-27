@@ -18,6 +18,7 @@ from app.recommendation_engine.schemas import (
     RecommendationResponse,
     RecommendationScoreBreakdown,
 )
+from app.research.service import get_india_market_research_context
 from app.risk_engine.service import evaluate_basic_risk
 
 _LATEST_RECOMMENDATION: RecommendationResponse | None = None
@@ -455,11 +456,58 @@ def _build_linked_instrument_risk_note() -> str:
     return " ".join(risk_parts)
 
 
-def generate_recommendation() -> RecommendationResponse:
+def _attach_research_context(
+    recommendation: RecommendationResponse,
+    include_research: bool,
+) -> RecommendationResponse:
+    if not include_research:
+        return recommendation
+
+    try:
+        research_context = get_india_market_research_context(
+            use_llm_summary=True,
+        )
+
+        recommendation.research_context = research_context
+
+        if (
+            RecommendationReasonCode.RESEARCH_CONTEXT_INCLUDED
+            not in recommendation.reason_codes
+        ):
+            recommendation.reason_codes.append(
+                RecommendationReasonCode.RESEARCH_CONTEXT_INCLUDED
+            )
+
+        return recommendation
+
+    except Exception as exc:
+        if (
+            RecommendationReasonCode.RESEARCH_CONTEXT_UNAVAILABLE
+            not in recommendation.reason_codes
+        ):
+            recommendation.reason_codes.append(
+                RecommendationReasonCode.RESEARCH_CONTEXT_UNAVAILABLE
+            )
+
+        recommendation.risk_note = (
+            f"{recommendation.risk_note} Research context could not be loaded "
+            f"at recommendation time because: {exc}."
+        )
+
+        return recommendation
+
+
+def generate_recommendation(
+    include_research: bool = True,
+) -> RecommendationResponse:
     profile = get_profile()
 
     if profile is None:
         recommendation = _create_missing_profile_recommendation()
+        recommendation = _attach_research_context(
+            recommendation=recommendation,
+            include_research=include_research,
+        )
         return _store_latest_recommendation(recommendation)
 
     risk_appetite = _get_profile_risk_appetite(profile)
@@ -479,6 +527,10 @@ def generate_recommendation() -> RecommendationResponse:
             risk_appetite=risk_appetite,
             preferred_instrument_types=preferred_instrument_types,
         )
+        recommendation = _attach_research_context(
+            recommendation=recommendation,
+            include_research=include_research,
+        )
         return _store_latest_recommendation(recommendation)
 
     if portfolio_summary.concentration_warning is not None:
@@ -490,6 +542,10 @@ def generate_recommendation() -> RecommendationResponse:
             allocation_by_type=allocation_by_type,
             risk_appetite=risk_appetite,
             preferred_instrument_types=preferred_instrument_types,
+        )
+        recommendation = _attach_research_context(
+            recommendation=recommendation,
+            include_research=include_research,
         )
         return _store_latest_recommendation(recommendation)
 
@@ -505,6 +561,11 @@ def generate_recommendation() -> RecommendationResponse:
         preferred_instrument_types=preferred_instrument_types,
     )
 
+    recommendation = _attach_research_context(
+        recommendation=recommendation,
+        include_research=include_research,
+    )
+
     return _store_latest_recommendation(recommendation)
 
 
@@ -515,6 +576,7 @@ def get_latest_recommendation() -> RecommendationResponse | None:
         return latest_recommendation
 
     return _LATEST_RECOMMENDATION
+
 
 def list_recommendation_history(
     limit: int = 20,

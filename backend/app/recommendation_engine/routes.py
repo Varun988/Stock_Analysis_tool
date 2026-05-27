@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Body, HTTPException, Query, status
 
 from app.common.responses import success_response
+from app.recommendation_engine.schemas import RecommendationGenerateRequest
 from app.recommendation_engine.service import (
     generate_recommendation,
     get_latest_recommendation,
@@ -12,8 +13,14 @@ router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
 
 @router.post("/generate", response_model=dict, status_code=status.HTTP_201_CREATED)
-def create_recommendation():
-    recommendation = generate_recommendation()
+def create_recommendation(
+    request: RecommendationGenerateRequest | None = Body(default=None),
+):
+    include_research = True if request is None else request.include_research
+
+    recommendation = generate_recommendation(
+        include_research=include_research,
+    )
 
     return success_response(
         data=recommendation.model_dump(),
