@@ -1,7 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.common.responses import success_response
-from app.explanation_engine.service import generate_latest_recommendation_explanation
+from app.explanation_engine.service import (
+    generate_latest_recommendation_explanation,
+    get_latest_explanation,
+)
 
 
 router = APIRouter(prefix="/explanations", tags=["Explanation Engine"])
@@ -20,4 +23,20 @@ def explain_latest_recommendation():
     return success_response(
         data=explanation.model_dump(),
         message="Recommendation explanation generated successfully",
+    )
+
+
+@router.get("/latest", response_model=dict)
+def fetch_latest_explanation():
+    explanation = get_latest_explanation()
+
+    if explanation is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No explanation generated yet",
+        )
+
+    return success_response(
+        data=explanation.model_dump(),
+        message="Latest explanation fetched successfully",
     )
