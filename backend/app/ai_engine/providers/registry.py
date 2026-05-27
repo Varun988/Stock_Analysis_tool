@@ -1,4 +1,5 @@
 from app.ai_engine.providers.base import AIExplanationProvider
+from app.ai_engine.providers.gemini_provider import GeminiAIExplanationProvider
 from app.ai_engine.providers.mock_provider import MockAIExplanationProvider
 
 
@@ -11,9 +12,7 @@ def get_ai_explanation_provider(
         return MockAIExplanationProvider()
 
     if normalized_provider_name == "GEMINI":
-        raise NotImplementedError(
-            "Gemini explanation provider is configured but not implemented yet."
-        )
+        return GeminiAIExplanationProvider()
 
     raise ValueError(
         f"Unsupported AI explanation provider: {provider_name}"
