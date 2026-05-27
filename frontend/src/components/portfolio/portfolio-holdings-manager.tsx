@@ -44,6 +44,12 @@ type PortfolioSummary = {
   concentration_warning: string | null;
 };
 
+type AllocationChartProps = {
+  title: string;
+  description: string;
+  allocation: Record<string, number>;
+};
+
 const defaultHolding: HoldingCreate = {
   instrument_id: null,
   instrument_name: "",
@@ -64,6 +70,85 @@ function formatCurrency(value: number) {
 
 function formatPercent(value: number) {
   return `${value.toFixed(2)}%`;
+}
+
+function formatAllocationLabel(value: string) {
+  return value
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/\w/g, (character) => character.toUpperCase());
+}
+
+function getAllocationEntries(allocation: Record<string, number>) {
+  return Object.entries(allocation)
+    .sort(([, firstValue], [, secondValue]) => secondValue - firstValue)
+    .map(([label, value]) => ({
+      label,
+      value,
+    }));
+}
+
+function getAllocationBarColor(index: number) {
+  const colors = [
+    "bg-emerald-400",
+    "bg-sky-400",
+    "bg-purple-400",
+    "bg-amber-400",
+    "bg-rose-400",
+    "bg-cyan-400",
+  ];
+
+  return colors[index % colors.length];
+}
+
+function AllocationChart({
+  title,
+  description,
+  allocation,
+}: AllocationChartProps) {
+  const entries = getAllocationEntries(allocation);
+
+  return (
+    <section className="rounded-2xl border border-slate-700 bg-slate-900 p-6">
+      <div>
+        <p className="text-sm uppercase tracking-wide text-emerald-300">
+          Allocation
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold">{title}</h2>
+        <p className="mt-2 text-sm text-slate-400">{description}</p>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {entries.length === 0 ? (
+          <p className="text-slate-400">No allocation data available yet.</p>
+        ) : (
+          entries.map((entry, index) => (
+            <div key={entry.label} className="space-y-2">
+              <div className="flex items-center justify-between gap-4 text-sm">
+                <span className="font-medium text-slate-200">
+                  {formatAllocationLabel(entry.label)}
+                </span>
+                <span className="text-slate-400">
+                  {formatPercent(entry.value)}
+                </span>
+              </div>
+
+              <div className="h-3 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className={`h-full rounded-full ${getAllocationBarColor(
+                    index,
+                  )}`}
+                  style={{
+                    width: `${Math.min(Math.max(entry.value, 0), 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  );
 }
 
 export function PortfolioHoldingsManager() {
@@ -384,6 +469,22 @@ export function PortfolioHoldingsManager() {
           </p>
         </div>
       </section>
+
+      {summary ? (
+        <section className="grid gap-5 lg:grid-cols-2">
+          <AllocationChart
+            title="Allocation by Instrument Type"
+            description="Shows how your current portfolio value is split across stocks, ETFs, and mutual funds."
+            allocation={summary.allocation_by_instrument_type}
+          />
+
+          <AllocationChart
+            title="Allocation by Instrument"
+            description="Shows how much each individual holding contributes to your current portfolio value."
+            allocation={summary.allocation_by_instrument}
+          />
+        </section>
+      ) : null}
 
       {summary?.concentration_warning ? (
         <section className="rounded-2xl border border-amber-500/40 bg-amber-950/30 p-5 text-amber-100">
