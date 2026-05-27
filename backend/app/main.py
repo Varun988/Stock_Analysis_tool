@@ -14,6 +14,8 @@ from app.metrics.routes import router as metrics_router
 from app.risk_engine.routes import router as risk_router
 from app.explanation_engine.routes import router as explanation_router
 from app.ai_engine.routes import router as ai_engine_router
+from app.research.routes import router as research_router
+from app.research.status_routes import router as research_status_router
 
 app = FastAPI(
     title=settings.app_name,
@@ -51,7 +53,8 @@ app.include_router(
     prefix=settings.api_v1_prefix,
 )
 app.include_router(ai_engine_router, prefix=settings.api_v1_prefix)
-
+app.include_router(research_router, prefix=settings.api_v1_prefix)
+app.include_router(research_status_router, prefix=settings.api_v1_prefix)
 @app.get("/")
 def root():
     return {

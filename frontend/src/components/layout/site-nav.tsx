@@ -43,20 +43,28 @@ const navGroups: NavGroup[] = [
         href: "/portfolio",
         label: "Holdings",
       },
+      {
+        href: "/upload",
+        label: "Upload Statement",
+      },
     ],
   },
   {
-    label: "AI Workflow",
-    items: [
-      {
-        href: "/recommendations",
-        label: "Recommendations",
-      },
-      {
-        href: "/explanations",
-        label: "Explanations",
-      },
-    ],
+  label: "AI Workflow",
+  items: [
+    {
+      href: "/recommendations",
+      label: "Recommendations",
+    },
+    {
+      href: "/explanations",
+      label: "Explanations",
+    },
+    {
+      href: "/research",
+      label: "Research",
+    },
+  ],
   },
   {
     label: "History",

@@ -6,6 +6,7 @@ from app.recommendation_engine.enums import (
     RecommendationAction,
     RecommendationReasonCode,
 )
+from app.research.schemas import ResearchContextResponse
 
 
 class AllocationPlanItem(BaseModel):
@@ -26,6 +27,13 @@ class RecommendationScoreBreakdown(BaseModel):
     )
 
 
+class RecommendationGenerateRequest(BaseModel):
+    include_research: bool = Field(
+        default=True,
+        description="Whether to include research context during recommendation generation.",
+    )
+
+
 class RecommendationResponse(BaseModel):
     recommendation_id: str
     recommendation_date: datetime
@@ -40,3 +48,4 @@ class RecommendationResponse(BaseModel):
     disclaimer: str
     allocation_plan: list[AllocationPlanItem] = Field(default_factory=list)
     score_breakdown: RecommendationScoreBreakdown | None = None
+    research_context: ResearchContextResponse | None = None

@@ -43,6 +43,14 @@ export default async function Home() {
                 Manage portfolio
               </Link>
               <Link
+                href="/upload"
+                className="inline-flex rounded-lg border border-emerald-500/60 px-5 py-3 font-semibold text-emerald-200 hover:border-emerald-300 hover:text-emerald-100"
+              >
+                Upload statement
+              </Link>
+
+
+              <Link
                 href="/recommendations"
                 className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
               >
@@ -54,7 +62,12 @@ export default async function Home() {
               >
                 Explain recommendation
               </Link>
-
+              <Link
+                href="/research"
+                className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
+              >
+                Research context
+              </Link>
               <Link
                 href="/instruments"
                 className="inline-flex rounded-lg border border-slate-600 px-5 py-3 font-semibold text-slate-100 hover:border-emerald-400"
