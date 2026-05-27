@@ -44,8 +44,8 @@ tmp/
 temp/
 
 # Uploaded portfolio files / sensitive documents
-uploads/
-backend/uploads/
+/uploads/
+/backend/uploads/
 *.pdf
 *.xlsx
 *.xls
