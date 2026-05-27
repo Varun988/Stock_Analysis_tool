@@ -44,3 +44,33 @@ export async function getProviderHealth(): Promise<ProviderHealthResponse> {
 
   return response.json();
 }
+
+export type AIProviderInfo = {
+  configured: boolean;
+  status: string;
+  description: string;
+  model?: string;
+};
+
+export type AIProviderStatusResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    configured_provider: string;
+    providers: Record<string, AIProviderInfo>;
+  };
+};
+
+export async function getAIProviderStatus(): Promise<AIProviderStatusResponse> {
+  const response = await fetch(`${API_BASE_URL}/ai/providers/status`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `AI provider status check failed with status ${response.status}`,
+    );
+  }
+
+  return response.json();
+}
