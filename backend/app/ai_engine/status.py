@@ -15,14 +15,14 @@ def get_ai_explanation_provider_status() -> dict:
             "GEMINI": {
                 "configured": bool(settings.gemini_api_key),
                 "status": (
-                    "CONFIG_READY_NOT_IMPLEMENTED"
+                    "AVAILABLE"
                     if settings.gemini_api_key
                     else "API_KEY_MISSING"
                 ),
                 "model": settings.gemini_model,
                 "description": (
-                    "Gemini explanation provider configuration placeholder. "
-                    "Provider implementation is planned in the next step."
+                    "Gemini explanation provider for beginner-friendly "
+                    "recommendation explanations."
                 ),
             },
         },
