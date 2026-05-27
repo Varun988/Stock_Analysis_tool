@@ -7,3 +7,7 @@ sqlalchemy==2.0.36
 psycopg2-binary==2.9.9
 yfinance==0.2.54
 google-genai
+pandas
+openpyxl
+python-multipart
+pypdf

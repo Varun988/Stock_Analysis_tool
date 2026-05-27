@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from app.portfolio.enums import HoldingInstrumentType
-
+from datetime import date
 
 class PortfolioHoldingCreate(BaseModel):
 
@@ -38,6 +38,15 @@ class PortfolioHoldingCreate(BaseModel):
         ...,
         ge=0,
         description="Current market value of the holding",
+    )
+    source_upload_id: str | None = Field(
+        default=None,
+        description="Optional source upload/import batch ID",
+    )
+
+    snapshot_date: date | None = Field(
+        default=None,
+        description="Portfolio snapshot date",
     )
 
 

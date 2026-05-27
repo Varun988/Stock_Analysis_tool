@@ -33,3 +33,21 @@ class PortfolioUploadResponse(BaseModel):
     upload_status: UploadStatus
     uploaded_at: datetime
     message: str | None = None
+
+
+
+class ReviewedPortfolioHolding(BaseModel):
+    instrument_id: str | None = None
+    instrument_name: str = Field(..., min_length=2)
+    instrument_type: str
+    quantity: float = Field(..., gt=0)
+    average_cost: float = Field(..., gt=0)
+    invested_amount: float = Field(..., gt=0)
+    current_value: float = Field(..., ge=0)
+    symbol: str | None = None
+    isin: str | None = None
+    confidence: str | None = None
+
+
+class ReviewedPortfolioImportRequest(BaseModel):
+    holdings: list[ReviewedPortfolioHolding]
