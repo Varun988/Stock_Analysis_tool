@@ -34,8 +34,11 @@ def get_provider_health_status() -> dict:
             ),
         },
         "AMFI": {
-            "configured": False,
-            "status": "PLANNED",
-            "description": "Official AMFI NAV provider planned for future implementation.",
+            "configured": True,
+            "status": "LATEST_NAV_IMPLEMENTED",
+            "description": (
+                "Fetches latest mutual fund NAV from AMFI NAVAll text data. "
+                "Historical AMFI NAV range parsing is not implemented yet."
+            ),
         },
     }

@@ -43,6 +43,7 @@ def search_indianapi_stock(name: str):
         message="IndianAPI stock search fetched successfully",
     )
 
+
 @router.get("/{instrument_id}/preferred-source", response_model=dict)
 def fetch_preferred_market_data_source(instrument_id: str):
     preferred_source = get_preferred_market_data_source_for_instrument(
@@ -56,6 +57,7 @@ def fetch_preferred_market_data_source(instrument_id: str):
         },
         message="Preferred market data source fetched successfully",
     )
+
 
 @router.get("/{instrument_id}/latest", response_model=dict)
 def fetch_latest_market_data(
@@ -73,10 +75,21 @@ def fetch_latest_market_data(
             detail=str(exc),
         ) from exc
 
-    snapshot = get_latest_market_data(
-        instrument_id=provider_instrument_id,
-        source=source,
-    )
+    try:
+        snapshot = get_latest_market_data(
+            instrument_id=provider_instrument_id,
+            source=source,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except NotImplementedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=str(exc),
+        ) from exc
 
     if snapshot is None:
         raise HTTPException(
@@ -106,10 +119,21 @@ def fetch_market_data_history(
             detail=str(exc),
         ) from exc
 
-    history = get_market_data_history(
-        instrument_id=provider_instrument_id,
-        source=source,
-    )
+    try:
+        history = get_market_data_history(
+            instrument_id=provider_instrument_id,
+            source=source,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except NotImplementedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=str(exc),
+        ) from exc
 
     return success_response(
         data=[snapshot.model_dump() for snapshot in history],
@@ -133,8 +157,8 @@ def fetch_supported_market_data_providers():
             },
             {
                 "name": "AMFI",
-                "status": "PLANNED",
-                "description": "Planned provider for official mutual fund NAV-related data.",
+                "status": "LATEST_NAV_IMPLEMENTED",
+                "description": "Fetches latest mutual fund NAV from AMFI NAVAll text data. Historical range parsing is not implemented yet.",
             },
             {
                 "name": "YFINANCE",
@@ -146,7 +170,6 @@ def fetch_supported_market_data_providers():
                 "status": "SKELETON",
                 "description": "Provider skeleton for India-focused stock and ETF market data.",
             },
-
         ],
         message="Supported market data providers fetched successfully",
     )
