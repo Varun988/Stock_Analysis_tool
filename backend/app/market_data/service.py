@@ -102,6 +102,20 @@ def resolve_provider_instrument_id(
 
         return instrument.symbol
 
+    if source == MarketDataSource.AMFI:
+        try:
+            instrument = get_instrument(instrument_id)
+        except ValueError:
+            instrument = None
+
+        if instrument is None:
+            return instrument_id
+
+        if not instrument.amfi_scheme_code:
+            raise ValueError("Instrument does not have an AMFI scheme code.")
+
+        return instrument.amfi_scheme_code
+
     return instrument_id
 
 def get_preferred_market_data_source_for_instrument(

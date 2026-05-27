@@ -4,6 +4,7 @@ from app.market_data.providers.manual_provider import ManualMarketDataProvider
 from app.market_data.providers.mfapi_provider import MFAPIMarketDataProvider
 from app.market_data.providers.yfinance_provider import YFinanceMarketDataProvider
 from app.market_data.providers.indianapi_provider import IndianAPIMarketDataProvider
+from app.market_data.providers.amfi_provider import AMFIMarketDataProvider
 
 def get_market_data_provider(
     source: MarketDataSource,
@@ -20,4 +21,6 @@ def get_market_data_provider(
     if source == MarketDataSource.INDIANAPI:
         return IndianAPIMarketDataProvider()
         
+    if source == MarketDataSource.AMFI:
+        return AMFIMarketDataProvider()
     raise ValueError(f"Unsupported market data provider: {source}")
