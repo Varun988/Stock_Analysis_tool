@@ -8,7 +8,7 @@ import {
 
 export async function GET() {
   const response = await fetch(
-    `${INTERNAL_API_BASE_URL}/research/providers/status`,
+    `${INTERNAL_API_BASE_URL}/market-data/providers/health`,
     {
       method: "GET",
       headers: getBackendHeaders(),

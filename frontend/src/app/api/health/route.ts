@@ -7,14 +7,11 @@ import {
 } from "@/lib/server-api";
 
 export async function GET() {
-  const response = await fetch(
-    `${INTERNAL_API_BASE_URL}/research/providers/status`,
-    {
-      method: "GET",
-      headers: getBackendHeaders(),
-      cache: "no-store",
-    }
-  );
+  const response = await fetch(`${INTERNAL_API_BASE_URL}/health`, {
+    method: "GET",
+    headers: getBackendHeaders(),
+    cache: "no-store",
+  });
 
   const data = await parseBackendResponse(response);
 
