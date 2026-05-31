@@ -18,7 +18,7 @@ from app.research.routes import router as research_router
 from app.research.status_routes import router as research_status_router
 from app.common.logging_config import setup_logging
 from app.common.request_logging import RequestLoggingMiddleware
-
+from app.common.internal_api_key import InternalApiKeyMiddleware
 
 setup_logging()
 
@@ -30,6 +30,7 @@ app = FastAPI(
     version=APP_VERSION,
 )
 
+app.add_middleware(InternalApiKeyMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,

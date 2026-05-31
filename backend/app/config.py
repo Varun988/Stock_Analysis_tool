@@ -9,6 +9,11 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
     database_url: str = "postgresql://postgres:postgres@localhost:5432/stock_tool"
+
+    # Internal API protection
+    internal_api_key: str | None = None
+
+
     # IndianAPI provider
     indianapi_base_url: str = "https://stock.indianapi.in"
     indianapi_api_key: str | None = None
