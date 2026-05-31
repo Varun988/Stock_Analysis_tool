@@ -6,6 +6,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
 
+
+    log_level: str = "INFO"
+    database_url: str = "postgresql://postgres:postgres@localhost:5432/stock_tool"
     # IndianAPI provider
     indianapi_base_url: str = "https://stock.indianapi.in"
     indianapi_api_key: str | None = None
