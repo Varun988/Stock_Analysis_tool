@@ -2192,7 +2192,3 @@ python migrate_recommendations_research_context.py
 - Sensitive data masking before LLM calls
 
 
-
-## 18. Financial Safety Disclaimer
-
-This application is an educational and decision-support tool. It does not provide certified financial advice. It does not guarantee returns. It does not predict markets. All outputs should be reviewed independently before making investment decisions.

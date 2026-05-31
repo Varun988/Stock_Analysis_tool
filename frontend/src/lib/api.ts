@@ -1,14 +1,19 @@
+import {
+  getBackendHeaders,
+  INTERNAL_API_BASE_URL,
+  parseBackendResponse,
+} from "@/lib/server-api";
+
 export type HealthResponse = {
   status: string;
   service: string;
   version: string;
 };
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_BASE_URL ?? "http://localhost:8000/api/v1";
-
 export async function getBackendHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/health`, {
+  const response = await fetch(`${INTERNAL_API_BASE_URL}/health`, {
+    method: "GET",
+    headers: getBackendHeaders(),
     cache: "no-store",
   });
 
@@ -16,7 +21,7 @@ export async function getBackendHealth(): Promise<HealthResponse> {
     throw new Error(`Backend health check failed with status ${response.status}`);
   }
 
-  return response.json();
+  return parseBackendResponse(response) as Promise<HealthResponse>;
 }
 
 export type ProviderHealth = {
@@ -32,9 +37,14 @@ export type ProviderHealthResponse = {
 };
 
 export async function getProviderHealth(): Promise<ProviderHealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/market-data/providers/health`, {
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `${INTERNAL_API_BASE_URL}/market-data/providers/health`,
+    {
+      method: "GET",
+      headers: getBackendHeaders(),
+      cache: "no-store",
+    }
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -42,7 +52,7 @@ export async function getProviderHealth(): Promise<ProviderHealthResponse> {
     );
   }
 
-  return response.json();
+  return parseBackendResponse(response) as Promise<ProviderHealthResponse>;
 }
 
 export type AIProviderInfo = {
@@ -62,7 +72,9 @@ export type AIProviderStatusResponse = {
 };
 
 export async function getAIProviderStatus(): Promise<AIProviderStatusResponse> {
-  const response = await fetch(`${API_BASE_URL}/ai/providers/status`, {
+  const response = await fetch(`${INTERNAL_API_BASE_URL}/ai/providers/status`, {
+    method: "GET",
+    headers: getBackendHeaders(),
     cache: "no-store",
   });
 
@@ -72,5 +84,5 @@ export async function getAIProviderStatus(): Promise<AIProviderStatusResponse> {
     );
   }
 
-  return response.json();
+  return parseBackendResponse(response) as Promise<AIProviderStatusResponse>;
 }
