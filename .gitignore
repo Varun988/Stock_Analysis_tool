@@ -112,3 +112,5 @@ postgres_data/
 *.db
 *.sqlite
 *.sqlite3
+repo_dump.md
+dump_repo.py

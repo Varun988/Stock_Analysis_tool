@@ -50,6 +50,50 @@ type ImportData = {
   failed_holdings: unknown[];
 };
 
+const ALLOWED_UPLOAD_EXTENSIONS = [".csv", ".xlsx", ".xls", ".txt", ".pdf", ".xml"];
+
+const MAX_UPLOAD_FILE_SIZE_MB = 10;
+const MAX_UPLOAD_FILE_SIZE_BYTES = MAX_UPLOAD_FILE_SIZE_MB * 1024 * 1024;
+
+const PDF_TEXT_EXTRACTION_NOTE =
+  "PDF support currently works only for text-based PDFs. Scanned/image PDFs are not supported yet because OCR is not implemented. If extraction fails, try CSV/XLSX/TXT/XML or manually enter holdings.";
+
+function getFileExtension(fileName: string): string {
+  const lastDotIndex = fileName.lastIndexOf(".");
+
+  if (lastDotIndex === -1) {
+    return "";
+  }
+
+  return fileName.slice(lastDotIndex).toLowerCase();
+}
+
+function isPdfFile(file: File): boolean {
+  return getFileExtension(file.name) === ".pdf";
+}
+
+function validateUploadFile(file: File): string | null {
+  const fileExtension = getFileExtension(file.name);
+
+  if (!file.name) {
+    return "Selected file does not have a valid file name.";
+  }
+
+  if (file.size === 0) {
+    return "Selected file is empty. Please upload a valid portfolio statement.";
+  }
+
+  if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+    return `Selected file is too large. Maximum supported file size is ${MAX_UPLOAD_FILE_SIZE_MB} MB.`;
+  }
+
+  if (!ALLOWED_UPLOAD_EXTENSIONS.includes(fileExtension)) {
+    return `Unsupported file type "${fileExtension || "unknown"}". Supported formats are CSV, XLSX, XLS, TXT, PDF, and XML.`;
+  }
+
+  return null;
+}
+
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extractionData, setExtractionData] = useState<ExtractionData | null>(
@@ -59,6 +103,9 @@ export default function UploadPage() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploadNoticeMessage, setUploadNoticeMessage] = useState<string | null>(
+    null
+  );
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -67,11 +114,38 @@ export default function UploadPage() {
     setExtractionData(null);
     setImportData(null);
     setErrorMessage(null);
+
+    if (!file) {
+      setUploadNoticeMessage(null);
+      return;
+    }
+
+    const validationError = validateUploadFile(file);
+
+    if (validationError) {
+      setErrorMessage(validationError);
+      setUploadNoticeMessage(null);
+      return;
+    }
+
+    if (isPdfFile(file)) {
+      setUploadNoticeMessage(PDF_TEXT_EXTRACTION_NOTE);
+      return;
+    }
+
+    setUploadNoticeMessage(null);
   }
 
   async function handleExtract() {
     if (!selectedFile) {
       setErrorMessage("Please select a portfolio statement file first.");
+      return;
+    }
+
+    const validationError = validateUploadFile(selectedFile);
+
+    if (validationError) {
+      setErrorMessage(validationError);
       return;
     }
 
@@ -165,9 +239,9 @@ export default function UploadPage() {
               </h1>
 
               <p className="mt-4 max-w-3xl text-slate-300">
-                Upload a CSV, XLSX, or TXT portfolio statement. The backend will
-                extract holdings, validate the rows, and let you import reviewed
-                holdings into the latest portfolio snapshot.
+                Upload a CSV, XLSX, XLS, TXT, PDF, or XML portfolio statement.
+                The backend will extract holdings, validate the rows, and let
+                you import reviewed holdings into the latest portfolio snapshot.
               </p>
             </div>
 
@@ -200,15 +274,26 @@ export default function UploadPage() {
                 Selected file:{" "}
                 <span className="font-semibold text-emerald-300">
                   {selectedFile.name}
+                </span>{" "}
+                <span className="text-slate-500">
+                  ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
                 </span>
               </p>
             )}
 
             <p className="mt-3 text-xs text-slate-500">
-              Tip: CSV/XLSX is parsed deterministically. TXT/unstructured
-              statements can use Gemini extraction. Review rows before import.
+              Tip: CSV/XLSX/XLS is parsed deterministically. TXT, XML, and
+              text-readable PDFs can use Gemini extraction. Review rows before
+              import.
             </p>
           </div>
+
+          {uploadNoticeMessage && (
+            <div className="mt-6 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4 text-sm text-amber-100">
+              <p className="font-semibold text-amber-200">Upload note</p>
+              <p className="mt-1">{uploadNoticeMessage}</p>
+            </div>
+          )}
 
           {errorMessage && (
             <div className="mt-6 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-100">
