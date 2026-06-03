@@ -25,7 +25,6 @@
 15. [Current Limitations](#15-current-limitations)
 16. [Future Roadmap](#16-future-roadmap)
 
-
 ---
 
 ## 1. Project Summary
@@ -96,7 +95,8 @@ The project is currently a strong demo-ready MVP.
 - Portfolio holdings module
 - Snapshot-based portfolio holdings
 - Portfolio allocation charts
-- CSV/XLSX/XLS deterministic portfolio extraction path
+- CSV/XLSX portfolio extraction
+- XLS portfolio extraction where parser dependencies support it
 - CSV/XLSX direct portfolio import path
 - TXT/XML/text-readable PDF extraction path using Gemini
 - Reviewed holdings import
@@ -119,15 +119,22 @@ The project is currently a strong demo-ready MVP.
 - Explanation persistence
 - Recommendation history API and UI
 - Explanation history API and UI
+- Research provider abstraction
+- Mock research provider
+- SerpAPI research provider support
+- Gemini-based research summarization
+- Rule-based research summarization fallback
 - Dashboard provider status
 - Dashboard quick stats
 - Grouped navigation UX
 - Frontend portfolio upload/review/import workflow
+- Internal API key middleware for optional backend route protection
+- Request logging middleware with request IDs
 - End-to-end upload-to-summary-to-recommendation MVP flow
 
 ### 3.2 Current Important Gaps
 
-The upload/import MVP is implemented, but production-grade import and deployment work remains.
+The upload/import MVP is implemented, but production-grade import, multi-user support, testing, and deployment work remain.
 
 Remaining gaps include:
 
@@ -140,13 +147,13 @@ Remaining gaps include:
 - XML-specific structured parser
 - Transaction import
 - Automatic instrument matching by ISIN, symbol, or AMFI code
+- Multi-user data isolation using `user_id`
 - Automated backend tests
 - Frontend smoke/E2E tests
 - Alembic migrations
-- Authentication and authorization
+- Full authentication and authorization
 - Production deployment pipeline
-- Monitoring, logging, rate limiting, and audit logs
-
+- Monitoring, rate limiting, audit logs, and sensitive-data controls
 
 ---
 
@@ -167,6 +174,8 @@ Remaining gaps include:
 - Pydantic
 - SQLAlchemy
 - PostgreSQL
+- Optional internal API key middleware
+- Request logging middleware
 
 ### AI Layer
 
@@ -175,6 +184,14 @@ Remaining gaps include:
 - Configurable AI provider architecture
 - Gemini used for explanations
 - Gemini reused for unstructured statement extraction
+
+### Research Layer
+
+- Mock research provider for local testing
+- SerpAPI provider support
+- Gemini-based summarization
+- Rule-based summarization fallback
+- Educational-only research context
 
 ### Market Data Providers
 
@@ -206,7 +223,7 @@ FastAPI Backend
  ↓
 Business Modules
  ↓
-PostgreSQL + External Market Data APIs + Gemini AI
+PostgreSQL + External Market Data APIs + Gemini AI + Research Providers
 ```
 
 ### 5.1 Backend Processing Flow
@@ -222,6 +239,8 @@ Metrics Engine
  ↓
 Risk Engine
  ↓
+Research Context, optional
+ ↓
 Recommendation Engine
  ↓
 AI Explanation Engine
@@ -236,7 +255,8 @@ Uploaded file
  ↓
 Detect file type
  ↓
-CSV/XLSX/XLS → deterministic extraction
+CSV/XLSX → deterministic extraction
+XLS → deterministic extraction where parser dependencies support it
 TXT/XML/text-readable PDF → text extraction + Gemini extraction
 Scanned/image PDF → OCR not implemented yet
  ↓
@@ -336,13 +356,17 @@ If the same snapshot date is imported again, existing holdings for that date are
 
 ### 6.6 Extensible Provider Architecture
 
-Market data providers are isolated behind a provider registry. This makes it easier to add or replace providers later.
+Market data, research, and AI providers are isolated behind provider registries. This makes it easier to add or replace providers later.
+
+### 6.7 Single-User MVP Boundary
+
+The current application behaves like a single-user MVP. It does not yet isolate data by authenticated user. Future multi-user support should add `user_id` across profile, holdings, uploads, recommendations, explanations, and related tables.
 
 ---
 
 ## 7. Detailed Backend Module Explanation
 
-The backend is organized into feature-oriented modules under `backend/app/`. Each module owns a specific business capability and usually includes some combination of routes, service logic, schemas, models, repositories, providers, or validators.
+The backend is organized into feature-oriented modules under `backend/app/`. Each module owns a specific business capability and usually includes some combination of routes, service logic, schemas, models, repositories, providers, validators, or middleware.
 
 ### 7.1 Application Entry Point
 
@@ -354,11 +378,13 @@ backend/app/main.py
 
 **Purpose:**
 
-This is the FastAPI application entry point. It creates the FastAPI app, configures CORS, registers all feature routers, and exposes the root and health endpoints.
+This is the FastAPI application entry point. It creates the FastAPI app, configures middleware, registers all feature routers, and exposes the root and health endpoints.
 
 **Main responsibilities:**
 
 - Create the FastAPI app instance
+- Apply optional internal API key middleware
+- Apply request logging middleware
 - Apply CORS middleware
 - Mount API routers under `/api/v1`
 - Register health check endpoint
@@ -387,6 +413,9 @@ backend/app/common/
 constants.py
 errors.py
 responses.py
+internal_api_key.py
+logging_config.py
+request_logging.py
 ```
 
 **Purpose:**
@@ -398,6 +427,9 @@ The common module contains reusable project-level utilities and conventions used
 - Define shared constants such as app version, supported markets, supported instrument types, and upload types
 - Define reusable application error classes
 - Standardize API response payloads
+- Protect backend routes with an optional internal API key
+- Configure backend logging
+- Attach request IDs and log request completion/failure details
 
 **Standard success response:**
 
@@ -409,9 +441,27 @@ The common module contains reusable project-level utilities and conventions used
 }
 ```
 
-**Why this matters:**
+**Internal API protection:**
 
-A shared response shape makes frontend parsing simpler and keeps API behavior consistent across modules.
+If `INTERNAL_API_KEY` is configured, protected backend routes require the following header:
+
+```http
+X-Internal-API-Key: your_internal_api_key
+```
+
+Public paths remain accessible:
+
+```text
+/
+/docs
+/redoc
+/openapi.json
+/api/v1/health
+```
+
+**Request logging:**
+
+The backend logs request method, path, query, status code, client host, duration, and request ID. Responses include an `X-Request-ID` header.
 
 ---
 
@@ -431,6 +481,9 @@ The configuration module reads environment variables and exposes settings throug
 
 - Store app name and environment
 - Store API prefix
+- Store database URL
+- Store logging level
+- Store optional internal API key
 - Store AI provider configuration
 - Store Gemini configuration
 - Store IndianAPI configuration
@@ -439,6 +492,9 @@ The configuration module reads environment variables and exposes settings throug
 **Important settings:**
 
 ```text
+DATABASE_URL
+LOG_LEVEL
+INTERNAL_API_KEY
 AI_EXPLANATION_PROVIDER
 GEMINI_API_KEY
 GEMINI_MODEL
@@ -450,7 +506,7 @@ RESEARCH_USE_GEMINI_SUMMARY
 
 **Why this matters:**
 
-External providers and AI features can be enabled or disabled through environment variables without changing code.
+External providers, database connection, AI features, logging, and route protection can be configured through environment variables without changing code.
 
 ---
 
@@ -477,11 +533,12 @@ The database module creates the SQLAlchemy engine and session factory used by re
 ```text
 PostgreSQL database connection through SQLAlchemy
 SessionLocal used directly in services/repositories
+DATABASE_URL read from environment settings with a local development default
 ```
 
 **Production improvement needed:**
 
-The database URL should eventually come from environment variables rather than being hardcoded. Alembic should also replace manual schema creation for production migrations.
+For production, `DATABASE_URL` should be explicitly configured through environment variables or secret management. Alembic should replace manual schema creation and development migration scripts for versioning, rollback, and deployment safety.
 
 ---
 
@@ -524,13 +581,6 @@ POST /api/v1/profile
 GET /api/v1/profile
 PUT /api/v1/profile
 ```
-
-**How it works:**
-
-1. The frontend submits profile information.
-2. Pydantic schemas validate the request.
-3. The service persists or updates the profile in PostgreSQL.
-4. The recommendation engine reads the saved profile when generating recommendations.
 
 **Current limitation:**
 
@@ -585,12 +635,6 @@ POST /api/v1/instruments
 GET /api/v1/instruments
 GET /api/v1/instruments/{instrument_id}
 ```
-
-**How it supports other modules:**
-
-- Portfolio holdings can reference an instrument ID.
-- Market data providers can resolve symbols or AMFI scheme codes through the instrument record.
-- Risk evaluation can use linked instrument IDs to fetch market data.
 
 **Current limitation:**
 
@@ -661,10 +705,6 @@ GET /api/v1/portfolio/summary
 
 By default, `GET /portfolio/holdings` and `GET /portfolio/summary` work with the latest snapshot. This prevents older imports from mixing with the latest portfolio view.
 
-**Concentration warning behavior:**
-
-The service detects when a single holding dominates the portfolio. This is used by the recommendation engine to suggest diversification.
-
 ---
 
 ### 7.8 Portfolio Import Module
@@ -694,10 +734,13 @@ The portfolio import module lets users import holdings from uploaded files inste
 
 **Current capabilities:**
 
+- Upload metadata endpoints
 - Upload file endpoint
-- CSV/XLSX/XLS deterministic extraction path
+- CSV/XLSX deterministic extraction path
+- XLS extraction where parser dependencies support it
 - Direct CSV/XLSX import path
 - TXT/XML/text-based PDF extraction path
+- Password-protected text PDF extraction when the correct password is provided
 - Gemini-based unstructured extraction
 - Valid/invalid holdings validation
 - Reviewed holdings import
@@ -706,11 +749,18 @@ The portfolio import module lets users import holdings from uploaded files inste
 **Main APIs:**
 
 ```http
+POST /api/v1/portfolio/uploads
+GET /api/v1/portfolio/uploads
+GET /api/v1/portfolio/uploads/{upload_id}
 POST /api/v1/portfolio/uploads/file
 POST /api/v1/portfolio/uploads/file/import
 POST /api/v1/portfolio/uploads/file/extract
 POST /api/v1/portfolio/uploads/import-reviewed
 ```
+
+**Important note about upload metadata APIs:**
+
+Upload metadata/list/detail APIs exist for MVP/stub usage, but upload history is not yet a production-grade persisted import batch history UI.
 
 **Structured file parser:**
 
@@ -750,18 +800,6 @@ POST /api/v1/portfolio/uploads/import-reviewed
   "invalid_holdings": []
 }
 ```
-
-**Reviewed import:**
-
-The frontend sends reviewed valid holdings to `POST /portfolio/uploads/import-reviewed`. The backend creates a new import batch, assigns `source_upload_id`, sets `snapshot_date`, replaces same-day snapshot holdings, and saves the new holdings.
-
-**Current limitations:**
-
-- CAS-specific parser is not implemented.
-- Broker-specific PDF parser is not implemented.
-- OCR for scanned PDFs is not implemented.
-- XML-specific structured parsing is not implemented.
-- Automatic instrument matching is not fully implemented.
 
 ---
 
@@ -811,19 +849,12 @@ INDIANAPI
 ```http
 GET /api/v1/market-data/providers
 GET /api/v1/market-data/providers/health
+GET /api/v1/market-data/indianapi/stock-search
 POST /api/v1/market-data/snapshots
 GET /api/v1/market-data/{instrument_id}/latest
 GET /api/v1/market-data/{instrument_id}/history
 GET /api/v1/market-data/{instrument_id}/preferred-source
 ```
-
-**Provider resolution:**
-
-The service can resolve the provider-specific instrument ID using instrument metadata:
-
-- Mutual funds can use AMFI/MFAPI scheme code.
-- Stocks/ETFs can use symbols.
-- Unknown or incomplete instruments fall back to manual data.
 
 **Current limitations:**
 
@@ -842,18 +873,6 @@ The service can resolve the provider-specific instrument ID using instrument met
 backend/app/metrics/
 ```
 
-**Important files:**
-
-```text
-schemas.py
-service.py
-routes.py
-```
-
-**Purpose:**
-
-The metrics module calculates basic performance metrics using market data history.
-
 **Main API:**
 
 ```http
@@ -869,13 +888,6 @@ GET /api/v1/metrics/{instrument_id}/basic-performance
 - Number of valid data points
 - Message explaining whether enough data exists
 
-**How it works:**
-
-1. Resolve provider-specific instrument ID.
-2. Fetch market data history from selected provider.
-3. Extract usable value from close price or NAV.
-4. Calculate return only if at least two valid data points exist.
-
 **Current limitation:**
 
 Advanced metrics such as CAGR, volatility, drawdown, XIRR, and benchmark comparison are not implemented yet.
@@ -889,19 +901,6 @@ Advanced metrics such as CAGR, volatility, drawdown, XIRR, and benchmark compari
 ```text
 backend/app/risk_engine/
 ```
-
-**Important files:**
-
-```text
-enums.py
-schemas.py
-service.py
-routes.py
-```
-
-**Purpose:**
-
-The risk engine performs basic risk classification using available market movement/performance data.
 
 **Main API:**
 
@@ -918,17 +917,6 @@ HIGH
 INSUFFICIENT_DATA
 ```
 
-**How it works:**
-
-1. Fetch basic performance for an instrument.
-2. Check whether enough data points exist.
-3. Classify risk based on movement/return thresholds.
-4. Return risk level, reason, and data point count.
-
-**How it is used:**
-
-The recommendation engine uses risk notes for linked holdings when instrument IDs are available.
-
 **Current limitation:**
 
 Risk classification is intentionally simple. It does not yet include volatility, drawdown, sector concentration, credit risk, liquidity risk, or risk-adjusted returns.
@@ -942,20 +930,6 @@ Risk classification is intentionally simple. It does not yet include volatility,
 ```text
 backend/app/recommendation_engine/
 ```
-
-**Important files:**
-
-```text
-enums.py
-schemas.py
-service.py
-repository.py
-routes.py
-```
-
-**Purpose:**
-
-The recommendation engine generates educational, portfolio-aware monthly investment suggestions based on the investor profile and latest portfolio snapshot.
 
 **Main APIs:**
 
@@ -1002,22 +976,6 @@ DIVERSIFY_MONTHLY_INVESTMENT
 - Score breakdown
 - Optional research context
 
-**Allocation plan logic:**
-
-The engine uses risk appetite and preferred instruments to allocate the monthly amount across instrument types such as mutual funds, ETFs, and stocks.
-
-**Score breakdown:**
-
-The recommendation includes educational scores such as:
-
-- Diversification score
-- Risk suitability score
-- Preference match score
-
-**Persistence:**
-
-`repository.py` stores recommendations in PostgreSQL and supports latest/history retrieval.
-
 **Current limitation:**
 
 The recommendation engine is educational and rule-based. It is not a licensed advisory system and does not provide direct buy/sell instructions.
@@ -1032,23 +990,6 @@ The recommendation engine is educational and rule-based. It is not a licensed ad
 backend/app/ai_engine/
 ```
 
-**Important files:**
-
-```text
-schemas.py
-service.py
-status.py
-routes.py
-providers/base.py
-providers/mock_provider.py
-providers/gemini_provider.py
-providers/registry.py
-```
-
-**Purpose:**
-
-The AI engine provides a provider abstraction for generating beginner-friendly explanations.
-
 **Main API:**
 
 ```http
@@ -1061,26 +1002,6 @@ GET /api/v1/ai/providers/status
 MOCK
 GEMINI
 ```
-
-**Mock provider:**
-
-Used for local development and testing without external API calls.
-
-**Gemini provider:**
-
-Calls Gemini with a carefully designed prompt and expects strict JSON with:
-
-- `beginner_summary`
-- `explanation`
-- `risk_explanation`
-
-**Safety rules in the prompt:**
-
-- Do not invent prices, NAVs, returns, or financial facts.
-- Do not give direct buy/sell advice.
-- Do not override the backend recommendation.
-- Keep the explanation educational.
-- Include disclaimer context.
 
 **Current limitation:**
 
@@ -1096,19 +1017,6 @@ There is no retry, caching, cost tracking, rate limiting, or automatic fallback 
 backend/app/explanation_engine/
 ```
 
-**Important files:**
-
-```text
-schemas.py
-service.py
-repository.py
-routes.py
-```
-
-**Purpose:**
-
-The explanation engine takes the latest backend-generated recommendation and produces a beginner-friendly explanation using the configured AI provider.
-
 **Main APIs:**
 
 ```http
@@ -1117,17 +1025,9 @@ GET /api/v1/explanations/latest
 GET /api/v1/explanations/history
 ```
 
-**How it works:**
+**Purpose:**
 
-1. Load the latest recommendation.
-2. Convert recommendation data into an AI explanation request.
-3. Call the configured AI provider.
-4. Save the explanation in PostgreSQL.
-5. Return beginner summary, explanation, risk explanation, and disclaimer.
-
-**Persistence:**
-
-`repository.py` stores explanations in PostgreSQL so explanation history survives backend restarts.
+The explanation engine takes the latest backend-generated recommendation and produces a beginner-friendly explanation using the configured AI provider.
 
 **Current limitation:**
 
@@ -1162,6 +1062,15 @@ providers/registry.py
 
 The research module provides market, instrument, and custom research context. It is designed to enrich recommendations with general context while keeping the recommendation decision rule-based.
 
+**Main APIs:**
+
+```http
+GET /api/v1/research/market/india
+GET /api/v1/research/instrument/{instrument_id}
+POST /api/v1/research/query
+GET /api/v1/research/providers/status
+```
+
 **Capabilities:**
 
 - Mock research provider for local testing
@@ -1173,21 +1082,9 @@ The research module provides market, instrument, and custom research context. It
 - Custom query support
 - Provider status reporting
 
-**Example use cases:**
-
-- Add India market context to a recommendation.
-- Summarize market headlines in beginner-friendly language.
-- Provide sources and risk notes for context.
-
 **Important safety boundary:**
 
 Research context is not used as a direct trading signal. It provides educational context only.
-
-**Current limitations:**
-
-- Search quality depends on the configured provider.
-- Research summarization is basic.
-- No advanced source ranking or fact-checking pipeline exists yet.
 
 ---
 
@@ -1203,11 +1100,6 @@ backend/migrate_recommendations_research_context.py
 **Purpose:**
 
 These scripts support development-time schema updates for snapshot holdings and recommendation research context.
-
-**Current role:**
-
-- Add snapshot columns to portfolio holdings
-- Add research context field to recommendations
 
 **Production improvement needed:**
 
@@ -1234,6 +1126,7 @@ The frontend API proxy layer forwards browser requests to the backend while keep
 **Responsibilities:**
 
 - Read `INTERNAL_API_BASE_URL`
+- Include backend headers such as `X-Internal-API-Key` when configured
 - Proxy JSON requests to backend
 - Proxy multipart file uploads to backend
 - Parse backend responses safely
@@ -1241,6 +1134,7 @@ The frontend API proxy layer forwards browser requests to the backend while keep
 
 **Implemented proxy areas:**
 
+- Health
 - Profile
 - Instruments
 - Portfolio holdings
@@ -1251,10 +1145,6 @@ The frontend API proxy layer forwards browser requests to the backend while keep
 - Explanations
 - Research
 - Provider status
-
-**Why this matters:**
-
-This keeps frontend components simple and avoids hardcoding backend URLs throughout UI code.
 
 ---
 
@@ -1269,14 +1159,6 @@ frontend/src/lib/
 **Purpose:**
 
 The shared frontend library contains reusable API helper functions and TypeScript types used by dashboard, portfolio, recommendations, explanations, and research components.
-
-**Responsibilities:**
-
-- Define response types
-- Fetch backend health
-- Fetch provider health
-- Fetch AI provider status
-- Support reusable API calls from components
 
 **Current limitation:**
 
@@ -1298,10 +1180,6 @@ frontend/src/components/layout/
 site-nav.tsx
 ```
 
-**Purpose:**
-
-The layout/navigation module provides grouped navigation across the application.
-
 **Navigation groups:**
 
 - Dashboard
@@ -1309,10 +1187,6 @@ The layout/navigation module provides grouped navigation across the application.
 - Portfolio
 - AI Workflow
 - History
-
-**Why this matters:**
-
-The app is feature-rich, so grouped navigation helps users understand the workflow from setup to portfolio analysis to recommendations and explanations.
 
 ---
 
@@ -1325,10 +1199,6 @@ frontend/src/app/page.tsx
 frontend/src/components/dashboard/
 ```
 
-**Purpose:**
-
-The dashboard gives a high-level view of application health and portfolio/recommendation status.
-
 **Displayed information:**
 
 - Backend health
@@ -1337,17 +1207,6 @@ The dashboard gives a high-level view of application health and portfolio/recomm
 - Portfolio quick stats
 - Latest recommendation status
 - Latest explanation provider
-
-**Important components:**
-
-- `DashboardQuickStats`
-- `ProviderHealthList`
-- `AIProviderStatusCard`
-- `StatusCard`
-
-**Why this matters:**
-
-The dashboard acts as the command center for the project and helps show that backend providers and AI configuration are working.
 
 ---
 
@@ -1360,20 +1219,6 @@ frontend/src/app/profile/
 frontend/src/components/profile/
 ```
 
-**Purpose:**
-
-The profile page allows users to create or update investor profile data.
-
-**Fields managed:**
-
-- Monthly investment amount
-- Risk appetite
-- Investment goal
-- Time horizon
-- Experience level
-- Preferred instruments
-- Preferred market
-
 **Backend APIs used:**
 
 ```http
@@ -1381,10 +1226,6 @@ GET /api/profile
 POST /api/profile
 PUT /api/profile
 ```
-
-**How it supports recommendations:**
-
-Recommendations depend on profile data. If no profile exists, the recommendation engine returns a profile-completion recommendation.
 
 ---
 
@@ -1397,30 +1238,12 @@ frontend/src/app/instruments/
 frontend/src/components/instruments/
 ```
 
-**Purpose:**
-
-The instruments page allows users to create and view investment instruments.
-
-**Supported instrument data:**
-
-- Name
-- Instrument type
-- Market
-- Symbol
-- ISIN
-- AMFI scheme code
-- Category
-
 **Backend APIs used:**
 
 ```http
 GET /api/instruments
 POST /api/instruments
 ```
-
-**How it supports other features:**
-
-Instrument records help market data provider resolution, risk evaluation, and future automatic matching of uploaded holdings.
 
 ---
 
@@ -1432,16 +1255,6 @@ Instrument records help market data provider resolution, risk evaluation, and fu
 frontend/src/app/portfolio/
 frontend/src/components/portfolio/
 ```
-
-**Main component:**
-
-```text
-PortfolioHoldingsManager
-```
-
-**Purpose:**
-
-The portfolio page lets users manually add holdings and view the current/latest snapshot portfolio summary.
 
 **Features:**
 
@@ -1465,10 +1278,6 @@ GET /api/portfolio/summary
 GET /api/instruments
 ```
 
-**Why this matters:**
-
-The recommendation engine depends on the latest portfolio summary from this module.
-
 ---
 
 ### 8.8 Upload Page
@@ -1486,18 +1295,20 @@ frontend/src/app/api/portfolio/uploads/file/extract/route.ts
 frontend/src/app/api/portfolio/uploads/import-reviewed/route.ts
 ```
 
-**Purpose:**
-
-The upload page allows users to import portfolio holdings from files instead of manually entering each holding.
-
 **Supported file types:**
 
 - CSV
 - XLSX
-- XLS
+- XLS where parser dependencies support it
 - TXT
 - PDF with readable text
 - XML treated as text
+
+**Important upload constraints:**
+
+- Text-based PDFs only
+- Scanned/image PDFs require OCR, which is not implemented yet
+- Frontend file validation should be kept in sync with backend parser support
 
 **Implemented flow:**
 
@@ -1511,33 +1322,6 @@ User selects file
  → User can continue to portfolio/recommendation flow
 ```
 
-**Displayed extraction result:**
-
-- File name
-- Extraction method
-- Holdings detected
-- Valid holdings count
-- Invalid holdings count
-- Warnings
-- Valid holdings table
-- Invalid holdings table
-
-**Displayed import result:**
-
-- Holdings received
-- Holdings imported
-- Holdings failed
-- Source upload ID
-- Snapshot date
-- Replaced same-day snapshot rows
-
-**Current limitations:**
-
-- Invalid rows can be displayed but richer inline correction is future work.
-- Upload history page is not implemented yet.
-- Snapshot selector UI is not implemented yet.
-- Frontend file size validation should be improved.
-
 ---
 
 ### 8.9 Recommendations Page
@@ -1549,18 +1333,6 @@ frontend/src/app/recommendations/
 frontend/src/components/recommendations/
 ```
 
-**Important components:**
-
-```text
-RecommendationPanel
-RecommendationHistoryPanel
-ResearchContextPanel
-```
-
-**Purpose:**
-
-The recommendations page triggers backend recommendation generation and displays the recommendation in a beginner-friendly UI.
-
 **Backend APIs used:**
 
 ```http
@@ -1568,23 +1340,6 @@ POST /api/recommendations/generate
 GET /api/recommendations/latest
 GET /api/recommendations/history
 ```
-
-**Displayed fields:**
-
-- Suggested action
-- Recommendation ID
-- Suggested amount
-- Summary
-- Risk note
-- Reason codes
-- Allocation plan
-- Score breakdown
-- Research context
-- Disclaimer
-
-**Why this matters:**
-
-This is the main user-facing decision-support result of the application.
 
 ---
 
@@ -1597,17 +1352,6 @@ frontend/src/app/explanations/
 frontend/src/components/explanations/
 ```
 
-**Important components:**
-
-```text
-ExplanationPanel
-ExplanationHistoryPanel
-```
-
-**Purpose:**
-
-The explanations page generates and displays beginner-friendly explanations for the latest backend recommendation.
-
 **Backend APIs used:**
 
 ```http
@@ -1615,21 +1359,6 @@ POST /api/explanations/recommendation
 GET /api/explanations/latest
 GET /api/explanations/history
 ```
-
-**Displayed fields:**
-
-- Provider
-- Beginner summary
-- Detailed explanation
-- Risk explanation
-- Disclaimer
-- Recommendation ID
-- Explanation ID
-- Created date
-
-**Why this matters:**
-
-The explanation layer helps beginners understand why a recommendation was generated, without making AI the investment decision-maker.
 
 ---
 
@@ -1641,10 +1370,6 @@ The explanation layer helps beginners understand why a recommendation was genera
 frontend/src/app/research/
 ```
 
-**Purpose:**
-
-The research page displays educational market/instrument context and supports custom research queries.
-
 **Backend APIs used:**
 
 ```http
@@ -1652,17 +1377,6 @@ GET /api/research/market/india
 GET /api/research/providers/status
 POST /api/research/query
 ```
-
-**Displayed data:**
-
-- Query
-- Subject type
-- Provider
-- Summarizer
-- Summary
-- Key points
-- Sources
-- Risk note
 
 **Safety boundary:**
 
@@ -1682,34 +1396,6 @@ frontend/src/app/explanations/history/
 **Purpose:**
 
 History pages show persisted recommendations and explanations from PostgreSQL.
-
-**Recommendation history displays:**
-
-- Recommendation ID
-- Date
-- Action
-- Amount
-- Summary
-- Allocation plan
-- Score breakdown
-- Reason codes
-- Risk note
-- Disclaimer
-
-**Explanation history displays:**
-
-- Explanation ID
-- Recommendation ID
-- Provider
-- Created date
-- Beginner summary
-- Explanation
-- Risk explanation
-- Disclaimer
-
-**Why this matters:**
-
-History proves persistence works and allows users to review how outputs changed over time.
 
 ---
 
@@ -1761,6 +1447,9 @@ Upload portfolio file from frontend
 ### 9.2 Backend Upload APIs
 
 ```http
+POST /api/v1/portfolio/uploads
+GET /api/v1/portfolio/uploads
+GET /api/v1/portfolio/uploads/{upload_id}
 POST /api/v1/portfolio/uploads/file
 POST /api/v1/portfolio/uploads/file/import
 POST /api/v1/portfolio/uploads/file/extract
@@ -1795,7 +1484,7 @@ Used for:
 
 - CSV
 - XLSX
-- XLS, subject to parser compatibility testing
+- XLS where parser dependencies support it
 
 This path uses deterministic parsing and column alias mapping.
 
@@ -1816,6 +1505,8 @@ This path extracts readable text and sends it to Gemini for structured holdings 
 
 Store parsed fields only. Do not store original sensitive documents unless explicitly required.
 
+Current LLM privacy limitation: sensitive-data masking before LLM calls is not fully implemented yet, so users should avoid uploading unnecessary personal information during MVP testing.
+
 ---
 
 ## 10. Recommendation and Explanation Flow
@@ -1827,7 +1518,9 @@ User adds/imports portfolio holdings
  ↓
 Portfolio summary is generated from latest snapshot
  ↓
-Recommendation engine analyzes profile + portfolio
+Optional research context is fetched
+ ↓
+Recommendation engine analyzes profile + portfolio + optional context
  ↓
 Recommendation is saved
  ↓
@@ -1901,6 +1594,9 @@ GET /api/v1/portfolio/summary
 ### Portfolio Import
 
 ```http
+POST /api/v1/portfolio/uploads
+GET /api/v1/portfolio/uploads
+GET /api/v1/portfolio/uploads/{upload_id}
 POST /api/v1/portfolio/uploads/file
 POST /api/v1/portfolio/uploads/file/import
 POST /api/v1/portfolio/uploads/file/extract
@@ -1912,6 +1608,7 @@ POST /api/v1/portfolio/uploads/import-reviewed
 ```http
 GET /api/v1/market-data/providers
 GET /api/v1/market-data/providers/health
+GET /api/v1/market-data/indianapi/stock-search
 POST /api/v1/market-data/snapshots
 GET /api/v1/market-data/{instrument_id}/latest
 GET /api/v1/market-data/{instrument_id}/history
@@ -1950,6 +1647,15 @@ GET /api/v1/explanations/history
 
 ```http
 GET /api/v1/ai/providers/status
+```
+
+### Research
+
+```http
+GET /api/v1/research/market/india
+GET /api/v1/research/instrument/{instrument_id}
+POST /api/v1/research/query
+GET /api/v1/research/providers/status
 ```
 
 ---
@@ -1998,18 +1704,23 @@ Open frontend:
 http://localhost:3000
 ```
 
-### 12.3 Environment Variables
+### 12.3 Backend Environment Variables
 
 Create backend `.env` from `.env.example` or local notes.
 
 Example:
 
 ```text
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/stock_tool
+LOG_LEVEL=INFO
+INTERNAL_API_KEY=optional_internal_api_key
 AI_EXPLANATION_PROVIDER=GEMINI
 GEMINI_API_KEY=your_actual_key
 GEMINI_MODEL=gemini-2.5-flash
 INDIANAPI_API_KEY=optional_key
 SERPAPI_API_KEY=optional_key
+RESEARCH_PROVIDER=MOCK
+RESEARCH_USE_GEMINI_SUMMARY=true
 ```
 
 Do not commit:
@@ -2019,7 +1730,23 @@ backend/.env
 frontend/.env.local
 ```
 
-### 12.4 Backend Migration Note
+### 12.4 Frontend Environment Variables
+
+Example `frontend/.env.local`:
+
+```text
+INTERNAL_API_BASE_URL=http://localhost:8000/api/v1
+INTERNAL_API_KEY=optional_internal_api_key_if_backend_requires_it
+```
+
+If optional frontend basic auth exists in your local setup, configure it only when needed:
+
+```text
+BASIC_AUTH_USER=optional_user
+BASIC_AUTH_PASSWORD=optional_password
+```
+
+### 12.5 Backend Migration Note
 
 If the `portfolio_holdings` table already exists, snapshot columns may need to be added.
 
@@ -2039,6 +1766,8 @@ source .venv/bin/activate
 python migrate_portfolio_holdings_snapshot.py
 python migrate_recommendations_research_context.py
 ```
+
+> Production should use Alembic migrations instead of manual migration scripts.
 
 ---
 
@@ -2077,13 +1806,18 @@ python migrate_recommendations_research_context.py
 - Backend starts
 - Frontend starts
 - Dashboard loads
+- Health endpoint works
+- Request logging returns `X-Request-ID`
+- Internal API key protection works when configured
 - Profile saves
 - Instruments load/create
 - Portfolio holdings load/create
 - Portfolio charts show
 - CSV extraction succeeds
 - XLSX extraction succeeds
+- XLS extraction works where parser dependencies support it
 - TXT/Gemini extraction succeeds when Gemini is configured
+- Text-based PDF extraction succeeds
 - Reviewed import succeeds
 - Duplicate snapshot handling works
 - Portfolio summary uses latest snapshot
@@ -2092,6 +1826,8 @@ python migrate_recommendations_research_context.py
 - Explanation generates
 - Explanation history loads
 - Gemini works if configured
+- Research provider status loads
+- India market research loads
 - AMFI latest NAV works
 - Latest recommendation survives backend restart
 - Latest explanation survives backend restart
@@ -2100,8 +1836,10 @@ python migrate_recommendations_research_context.py
 
 ## 15. Current Limitations
 
-- No authentication yet
-- No authorization yet
+- Single-user MVP behavior; no `user_id`-based data isolation yet
+- No full authentication yet
+- No full authorization yet
+- Optional internal API key middleware is route protection, not user authentication
 - No Alembic migrations yet
 - CAS PDF parser not fully implemented yet
 - Broker-specific PDF parser not implemented yet
@@ -2110,13 +1848,15 @@ python migrate_recommendations_research_context.py
 - Transaction import not implemented yet
 - Automatic instrument matching by ISIN/symbol/AMFI code not fully implemented yet
 - Upload history UI not implemented yet
+- Upload metadata APIs are MVP/stub-style and not production-grade import history
 - Snapshot comparison UI not implemented yet
 - AMFI historical NAV parser not implemented yet
 - Recommendation scoring is educational and rule-based, not a licensed advisory engine
 - Market data providers may have rate limits or API constraints
+- Provider caching is not implemented yet
 - No automated test suite yet
 - No production deployment pipeline yet
-- No monitoring/logging/rate limiting/audit logs yet
+- Monitoring, rate limiting, and audit logs are not production-grade yet
 - No sensitive-data masking before LLM calls yet
 
 ---
@@ -2134,6 +1874,9 @@ python migrate_recommendations_research_context.py
 - Backend upload-to-recommendation flow
 - Frontend upload/review/import workflow
 - End-to-end upload-to-summary-to-recommendation MVP flow
+- Request logging middleware
+- Optional internal API key middleware
+- Research provider status and research context support
 
 ### High Priority
 
@@ -2141,12 +1884,14 @@ python migrate_recommendations_research_context.py
 - Invalid-row correction UI
 - Upload history and import batch detail UI
 - Snapshot selector or historical snapshot view
+- Multi-user model with `user_id` across core tables
 - Automated backend tests
 - Frontend smoke tests
 - Deployment guide
 - Alembic migrations
 - Error handling polish
 - Instrument matching by ISIN/symbol/AMFI code
+- Sensitive-data masking before LLM calls
 
 ### Product Enhancements
 
@@ -2171,6 +1916,7 @@ python migrate_recommendations_research_context.py
 - Natural language portfolio questions
 - MCP-compatible AI tools
 - Agentic orchestration
+- AI provider retry/caching/cost tracking
 
 ### Production Enhancements
 
@@ -2183,6 +1929,5 @@ python migrate_recommendations_research_context.py
 - Monitoring and logging
 - Docker deployment
 - Cloud deployment
+- Secret management
 - Sensitive data masking before LLM calls
-
-
