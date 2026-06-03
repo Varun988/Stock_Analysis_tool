@@ -147,12 +147,6 @@ Remaining gaps include:
 - Production deployment pipeline
 - Monitoring, logging, rate limiting, and audit logs
 
-Estimated completion:
-
-```text
-Demo / resume-ready MVP: 90–95% complete
-Production-grade readiness: 60–70% complete
-```
 
 ---
 
