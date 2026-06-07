@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 from uuid import uuid4
-
+from app.portfolio_analysis.service import analyze_portfolio_exposure
 from app.portfolio_import.enums import UploadStatus
 from app.portfolio_import.schemas import (
     PortfolioUploadCreate,
@@ -19,6 +19,11 @@ from app.portfolio_import.validators import (
     normalize_instrument_type,
     validate_extracted_holdings,
 )
+
+from app.portfolio_import.gemini_instrument_resolver import resolve_holdings_identity_with_ai
+from app.historical_analysis.service import analyze_holdings_historical_performance
+from app.benchmark_analysis.service import compare_holdings_with_benchmarks
+from app.candidate_discovery.service import discover_external_candidates
 
 
 _UPLOAD_STORE: dict[str, PortfolioUploadResponse] = {}
@@ -143,17 +148,50 @@ async def extract_uploaded_portfolio_file(
             parsed_result["holdings"]
         )
 
+        resolved_valid_holdings = resolve_holdings_identity_with_ai(
+            validation_result["valid_holdings"]
+        )
+        portfolio_exposure_analysis = analyze_portfolio_exposure(resolved_valid_holdings)
+        historical_performance_analysis = analyze_holdings_historical_performance(
+        resolved_valid_holdings
+        )
+        benchmark_comparison_analysis = compare_holdings_with_benchmarks(
+            historical_performance_analysis
+        )
+        external_candidate_discovery = discover_external_candidates(
+            portfolio_exposure_analysis=portfolio_exposure_analysis,
+            historical_performance_analysis=historical_performance_analysis,
+            benchmark_comparison_analysis=benchmark_comparison_analysis,
+        )
+        warnings = []
+
+        summary_validation = parsed_result.get("summary_validation")
+
+        if summary_validation and summary_validation.get("summary_found"):
+            if not summary_validation.get("invested_value_matches"):
+                warnings.append("Statement invested value does not match extracted holdings total.")
+
+            if not summary_validation.get("current_value_matches"):
+                warnings.append("Statement closing value does not match extracted holdings total.")
+
+            if not summary_validation.get("gain_loss_matches"):
+                warnings.append("Statement unrealised P&L does not match extracted holdings total.")
+
         return {
             "file_name": parsed_result["file_name"],
             "extraction_method": "DETERMINISTIC",
             "holdings_detected": parsed_result["holdings_detected"],
-            "valid_holdings_count": len(validation_result["valid_holdings"]),
+            "valid_holdings_count": len(resolved_valid_holdings),
             "invalid_holdings_count": len(validation_result["invalid_holdings"]),
-            "valid_holdings": validation_result["valid_holdings"],
+            "valid_holdings": resolved_valid_holdings,
             "invalid_holdings": validation_result["invalid_holdings"],
-            "warnings": [],
+            "summary_validation": summary_validation,
+            "portfolio_exposure_analysis": portfolio_exposure_analysis,
+            "historical_performance_analysis": historical_performance_analysis,
+            "external_candidate_discovery": external_candidate_discovery,
+            "benchmark_comparison_analysis": benchmark_comparison_analysis,
+            "warnings": warnings,
         }
-
     extracted_text_result = await extract_text_from_uploaded_file(
         file=file,
         password=password,
@@ -167,16 +205,37 @@ async def extract_uploaded_portfolio_file(
         llm_result["holdings"]
     )
 
+    resolved_valid_holdings = resolve_holdings_identity_with_ai(
+        validation_result["valid_holdings"]
+    )
+
+    portfolio_exposure_analysis = analyze_portfolio_exposure(resolved_valid_holdings)
+    historical_performance_analysis = analyze_holdings_historical_performance(
+    resolved_valid_holdings
+    )
+    benchmark_comparison_analysis = compare_holdings_with_benchmarks(
+        historical_performance_analysis
+    )
+    external_candidate_discovery = discover_external_candidates(
+        portfolio_exposure_analysis=portfolio_exposure_analysis,
+        historical_performance_analysis=historical_performance_analysis,
+        benchmark_comparison_analysis=benchmark_comparison_analysis,
+    )
     return {
         "file_name": extracted_text_result["file_name"],
         "extraction_method": "GEMINI",
         "holdings_detected": len(llm_result["holdings"]),
-        "valid_holdings_count": len(validation_result["valid_holdings"]),
+        "valid_holdings_count": len(resolved_valid_holdings),
         "invalid_holdings_count": len(validation_result["invalid_holdings"]),
-        "valid_holdings": validation_result["valid_holdings"],
+        "valid_holdings": resolved_valid_holdings,
         "invalid_holdings": validation_result["invalid_holdings"],
+        "portfolio_exposure_analysis": portfolio_exposure_analysis,
+        "historical_performance_analysis": historical_performance_analysis,
+        "benchmark_comparison_analysis": benchmark_comparison_analysis,
+        "external_candidate_discovery": external_candidate_discovery,
         "warnings": llm_result.get("warnings", []),
     }
+
 
 def import_reviewed_portfolio_holdings(
     request: ReviewedPortfolioImportRequest,
