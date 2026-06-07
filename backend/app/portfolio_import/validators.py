@@ -80,8 +80,45 @@ def validate_extracted_holdings(raw_holdings: list[dict]) -> dict:
         if current_value is None or current_value < 0:
             errors.append("current_value must be 0 or greater")
 
+        if quantity is not None and average_cost is not None and invested_amount is not None:
+            calculated_invested_amount = round(quantity * average_cost, 2)
+            uploaded_invested_amount = round(invested_amount, 2)
+            if abs(calculated_invested_amount - uploaded_invested_amount) > 1:
+                errors.append(
+                    "invested_amount does not match quantity multiplied by average_cost"
+                )
+
+        current_price = clean_numeric_value(raw_holding.get("current_price"))
+        if quantity is not None and current_price is not None and current_value is not None:
+            calculated_current_value = round(quantity * current_price, 2)
+            uploaded_current_value = round(current_value, 2)
+            if abs(calculated_current_value - uploaded_current_value) > 1:
+                errors.append(
+                    "current_value does not match quantity multiplied by current_price"
+                )
+
+        current_price = clean_numeric_value(raw_holding.get("current_price"))
+        gain_loss = clean_numeric_value(raw_holding.get("gain_loss"))
+        gain_loss_percent = clean_numeric_value(raw_holding.get("gain_loss_percent"))
+
+        if current_value is not None and invested_amount is not None:
+            calculated_gain_loss = current_value - invested_amount
+
+            if gain_loss is None:
+                gain_loss = calculated_gain_loss
+            elif abs(gain_loss) < 0.01 and abs(calculated_gain_loss) >= 0.01:
+                gain_loss = calculated_gain_loss
+
+        if (
+            gain_loss_percent is None
+            and gain_loss is not None
+            and invested_amount is not None
+            and invested_amount > 0
+        ):
+            gain_loss_percent = (gain_loss / invested_amount) * 100
+
         normalized_holding = {
-            "instrument_id": None,
+            "instrument_id": raw_holding.get("instrument_id"),
             "instrument_name": instrument_name,
             "instrument_type": instrument_type.value if instrument_type else str(instrument_type_raw),
             "symbol": raw_holding.get("symbol"),
@@ -89,8 +126,12 @@ def validate_extracted_holdings(raw_holdings: list[dict]) -> dict:
             "quantity": quantity,
             "average_cost": average_cost,
             "invested_amount": invested_amount,
+            "current_price": current_price,
             "current_value": current_value,
+            "gain_loss": round(gain_loss, 2) if gain_loss is not None else None,
+            "gain_loss_percent": round(gain_loss_percent, 2) if gain_loss_percent is not None else None,
             "confidence": raw_holding.get("confidence", "LOW"),
+            "extraction_source": raw_holding.get("extraction_source"),
         }
 
         if errors:

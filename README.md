@@ -1,8 +1,10 @@
 # Stock Analysis Tool
 
-**An educational, AI-assisted investment recommendation and portfolio analysis platform for Indian stocks, ETFs, and mutual funds.**
+**An educational, AI-assisted portfolio analysis, investment research, and recommendation-support platform for Indian stocks, ETFs, index funds, and mutual funds.**
 
-> **Financial safety disclaimer:** This project is for education and decision support only. It does not provide guaranteed returns, direct trading instructions, or certified personal financial advice. All investments are subject to market risk. Users should verify information independently and consult a qualified financial advisor before making investment decisions.
+> **Financial safety disclaimer:** This project is for education and decision support only. It does **not** provide guaranteed returns, direct trading instructions, or certified personal financial advice. All investments are subject to market risk. Users should verify information independently and consult a qualified financial advisor before making investment decisions.
+
+> **Personal-use safety note:** This application is being built for personal use first. Therefore, the system intentionally prioritizes conservative defaults, clear confidence levels, data-quality warnings, user-review checkpoints, privacy, and explainability over aggressive automation.
 
 ---
 
@@ -14,39 +16,74 @@
 4. [Technology Stack](#4-technology-stack)
 5. [High-Level Architecture](#5-high-level-architecture)
 6. [Core Design Principles](#6-core-design-principles)
-7. [Detailed Backend Module Explanation](#7-detailed-backend-module-explanation)
-8. [Detailed Frontend Module Explanation](#8-detailed-frontend-module-explanation)
-9. [Portfolio Upload and Import Flow](#9-portfolio-upload-and-import-flow)
-10. [Recommendation and Explanation Flow](#10-recommendation-and-explanation-flow)
-11. [API Summary](#11-api-summary)
-12. [Setup Instructions](#12-setup-instructions)
-13. [Recommended User Flow](#13-recommended-user-flow)
-14. [Smoke Test Checklist](#14-smoke-test-checklist)
-15. [Current Limitations](#15-current-limitations)
-16. [Future Roadmap](#16-future-roadmap)
+7. [New Intelligent Analysis Pipeline](#7-new-intelligent-analysis-pipeline)
+8. [Detailed Backend Module Explanation](#8-detailed-backend-module-explanation)
+9. [Detailed Frontend Module Explanation](#9-detailed-frontend-module-explanation)
+10. [Portfolio Upload, Extraction, Resolution, and Import Flow](#10-portfolio-upload-extraction-resolution-and-import-flow)
+11. [Recommendation and Explanation Flow](#11-recommendation-and-explanation-flow)
+12. [API Summary](#12-api-summary)
+13. [Setup Instructions](#13-setup-instructions)
+14. [Recommended User Flow](#14-recommended-user-flow)
+15. [Smoke Test Checklist](#15-smoke-test-checklist)
+16. [Current Limitations](#16-current-limitations)
+17. [Future Roadmap](#17-future-roadmap)
+18. [Safety, Privacy, and User Review Checklist](#18-safety-privacy-and-user-review-checklist)
 
 ---
 
 ## 1. Project Summary
 
-The **Stock Analysis Tool** helps beginner investors understand their portfolio, track holdings, import portfolio statements, analyze allocation, identify concentration risk, generate monthly investment suggestions, and receive beginner-friendly explanations using AI.
+The **Stock Analysis Tool** helps beginner and self-directed investors understand their portfolio, import holdings from broker/platform statements, analyze allocation, detect overlap and concentration risk, compare holdings with benchmarks, discover diversification candidate categories, and generate educational monthly investment guidance.
 
-The project follows one core principle:
+The tool is designed especially for Indian investment instruments such as:
+
+- Indian stocks
+- ETFs
+- Index funds
+- Mutual funds
+- Gold ETFs
+- Debt/liquid funds
+
+The system follows one core operating principle:
 
 ```text
-Backend logic recommends.
-AI explains and extracts.
-Backend validation controls imports.
+Backend validates, calculates, scores, and decides.
+AI extracts, structures, researches, and explains.
+User reviews before any investment action.
 ```
 
-The system does **not** blindly ask AI to pick stocks or predict the market. Instead, the backend performs structured analysis using profile data, portfolio holdings, market data, risk rules, allocation checks, and scoring logic.
+The system does **not** blindly ask AI to pick stocks, predict the market, or create direct buy/sell instructions. Instead, the backend performs structured analysis using:
+
+```text
+Investor profile
++ Uploaded holdings
++ Instrument resolution
++ Portfolio exposure analysis
++ Historical market data
++ Benchmark comparison
++ Candidate discovery
++ Risk and suitability rules
++ Recommendation scoring
++ AI explanation
+```
 
 AI is used for:
 
-- Explaining backend-generated recommendations
-- Extracting holdings from unstructured uploaded statements into structured JSON
+- Extracting holdings from unstructured statements
+- Converting SerpAPI search results into strict JSON instrument metadata
+- Summarizing research context
+- Explaining backend-generated recommendations in beginner-friendly language
 
-The backend validates and controls final imports and recommendation logic.
+The backend remains responsible for:
+
+- Numeric calculations
+- Total validation
+- Instrument confidence checks
+- Historical metrics
+- Benchmark comparison
+- Risk suitability
+- Candidate scoring
+- Final educational recommendation structure
 
 ---
 
@@ -55,88 +92,186 @@ The backend validates and controls final imports and recommendation logic.
 Beginner investors often struggle with questions like:
 
 - Where should I invest my monthly amount?
-- Am I overexposed to one ETF, stock, or mutual fund?
+- Am I holding too many similar ETFs?
+- Am I overexposed to Nifty 50 or one market segment?
 - Is my portfolio currently in profit or loss?
-- How should I diversify?
-- Why did the tool suggest this allocation?
-- What does risk suitability or diversification score mean?
-- How did previous recommendations change over time?
-- Can AI explain recommendations without making risky predictions?
-- Can I upload my statement instead of manually entering every holding?
-- Can the backend extract holdings from statements in a platform-independent way?
+- How diversified is my portfolio?
+- Should future monthly investments go into my existing holdings or other instruments?
+- Can the tool suggest external candidates outside my existing portfolio?
+- Why did the tool suggest diversification instead of topping up the same ETF?
+- What does benchmark comparison mean?
+- What does confidence level mean?
+- Can AI help without making risky investment decisions?
+- Can I upload a Groww/Zerodha/Upstox/CAMS/NSDL/CDSL-style statement instead of manually entering holdings?
+- Can the backend extract and validate holdings from messy files safely?
 
 This project solves those problems by combining:
 
 ```text
 Investor Profile
-+ Portfolio Holdings / Imported Snapshots
-+ Statement Extraction
-+ Market Data Providers
-+ Risk Rules
-+ Recommendation Scoring
++ Portfolio Statements
++ Deterministic Parsing
++ AI-Assisted Extraction
++ SerpAPI Search
++ Gemini JSON Structuring
++ Instrument Resolution Cache
++ Portfolio Exposure Analysis
++ Historical Market Data
++ Benchmark Comparison
++ External Candidate Discovery
++ Backend Recommendation Scoring
 + AI Explanation
-+ PostgreSQL Persistence
-+ Next.js Frontend
++ User Review Workflow
 ```
 
 ---
 
 ## 3. Current MVP Status
 
-The project is currently a strong demo-ready MVP.
+The project has evolved from a basic portfolio tracker into a strong educational analysis MVP.
 
 ### 3.1 Implemented
+
+#### Core Platform
 
 - FastAPI backend
 - Next.js frontend
 - PostgreSQL persistence
+- SQLAlchemy-based database access
+- Request logging middleware with request IDs
+- Optional internal API key middleware
+- Swagger/OpenAPI documentation
+
+#### Investor and Portfolio
+
 - Investor profile module
 - Instrument management module
 - Portfolio holdings module
 - Snapshot-based portfolio holdings
+- Latest snapshot portfolio summary
 - Portfolio allocation charts
+- Gain/loss calculation
+- Concentration warning
+
+#### Upload and Extraction
+
 - CSV/XLSX portfolio extraction
-- XLS portfolio extraction where parser dependencies support it
-- CSV/XLSX direct portfolio import path
-- TXT/XML/text-readable PDF extraction path using Gemini
+- XLS extraction where dependencies support it
+- Groww-like Excel statement parsing with metadata/header-row detection
+- Column alias normalization
+- Quantity, average cost, invested amount, current price, current value, gain/loss, and gain/loss percentage extraction/calculation
+- Statement-level summary validation
+- TXT/XML/text-readable PDF extraction path
+- Gemini extraction for unstructured files
 - Reviewed holdings import
 - Duplicate protection for same-day snapshot imports
-- Latest snapshot portfolio summary
+
+#### New Instrument Resolution Pipeline
+
+- SerpAPI search-based instrument discovery
+- Gemini strict JSON instrument identity extraction
+- Backend validation of Gemini output
+- Local `resolution_cache.json` for resolved instruments
+- Rule-based fallback exposure classification when Gemini is unavailable or quota-exhausted
+- Confidence levels: `HIGH`, `MEDIUM`, `LOW`
+- Safe unresolved-instrument handling
+
+#### New Portfolio Analysis Pipeline
+
+- Portfolio exposure analysis
+- Benchmark exposure calculation
+- Exposure category calculation
+- Instrument type exposure calculation
+- Market data provider coverage calculation
+- Overlap warnings
+- Diversification gap detection
+- Candidate category hints
+
+#### New Historical Analysis Pipeline
+
+- Historical price fetching through YFinance
+- YFinance period fallbacks
+- Direct Yahoo chart API fallback
+- Historical return calculations
+- CAGR calculations
+- Annualized volatility
+- Maximum drawdown
+- Positive month ratio
+- Historical scoring
+- Safe skipping of unresolved holdings
+
+#### New Benchmark Comparison Pipeline
+
+- Benchmark comparison engine
+- Nifty 50 benchmark mapping
+- Nifty Bank benchmark mapping
+- Proxy support for Nifty 50 Value 20 until exact benchmark source is integrated
+- Relative return comparison
+- Relative volatility comparison
+- Relative drawdown comparison
+- Benchmark score
+
+#### New Candidate Discovery Pipeline
+
+- External candidate category discovery
+- Candidate categories based on portfolio gaps
+- Candidate universe controlled by backend
+- Candidate scoring based on diversification benefit
+- Candidate instrument resolution using SerpAPI + Gemini
+- Candidate resolution cache
+- Category-only fallback when Gemini is unavailable
+
+#### New Backend Recommendation Scoring
+
+- Backend-controlled educational recommendation scoring
+- Portfolio exposure score
+- Current holdings historical/benchmark score
+- External candidate score
+- Profile suitability score
+- Monthly investment amount from investor profile when available
+- Fallback default monthly amount when profile is unavailable
+- Risk appetite suitability
+- Time horizon suitability
+- Experience level suitability
+- Allocation plan generation
+- Reason codes
+- Confidence level
+- AI explanation layer for backend recommendation
+- Fallback explanation when Gemini fails
+
+#### Providers and Research
+
 - Market data provider abstraction
 - Manual market data provider
 - MFAPI mutual fund provider
-- YFinance stock/ETF provider
-- IndianAPI provider support
 - AMFI latest NAV provider
-- Metrics engine
-- Risk engine
-- Recommendation engine
-- Allocation plan generation
-- Score breakdown generation
-- Gemini AI explanation provider
-- Mock AI explanation provider
-- Recommendation persistence
-- Explanation persistence
-- Recommendation history API and UI
-- Explanation history API and UI
+- YFinance provider
+- IndianAPI provider support
 - Research provider abstraction
 - Mock research provider
-- SerpAPI research provider support
+- SerpAPI research provider
 - Gemini-based research summarization
-- Rule-based research summarization fallback
-- Dashboard provider status
-- Dashboard quick stats
+- Rule-based summarization fallback
+
+#### Frontend MVP
+
+- Dashboard
+- Profile page
+- Instruments page
+- Portfolio page
+- Upload/review/import workflow
+- Recommendation page
+- Explanation page
+- History pages
 - Grouped navigation UX
-- Frontend portfolio upload/review/import workflow
-- Internal API key middleware for optional backend route protection
-- Request logging middleware with request IDs
-- End-to-end upload-to-summary-to-recommendation MVP flow
+
+---
 
 ### 3.2 Current Important Gaps
 
-The upload/import MVP is implemented, but production-grade import, multi-user support, testing, and deployment work remain.
+The project is functional as an MVP, but production-grade robustness still requires work.
 
-Remaining gaps include:
+Important gaps include:
 
 - Editable invalid-row correction UI
 - Upload history and import batch detail UI
@@ -146,7 +281,8 @@ Remaining gaps include:
 - OCR for scanned/image PDFs
 - XML-specific structured parser
 - Transaction import
-- Automatic instrument matching by ISIN, symbol, or AMFI code
+- DB-backed instrument resolution cache
+- DB-backed candidate resolution cache
 - Multi-user data isolation using `user_id`
 - Automated backend tests
 - Frontend smoke/E2E tests
@@ -154,6 +290,11 @@ Remaining gaps include:
 - Full authentication and authorization
 - Production deployment pipeline
 - Monitoring, rate limiting, audit logs, and sensitive-data controls
+- Sensitive-data masking before LLM calls
+- Exact benchmark sources for some Indian strategy indices
+- AMFI historical NAV parsing
+- Full candidate historical and benchmark scoring
+- Frontend UI for all new analysis blocks
 
 ---
 
@@ -183,23 +324,26 @@ Remaining gaps include:
 - Mock AI provider for local development
 - Configurable AI provider architecture
 - Gemini used for explanations
-- Gemini reused for unstructured statement extraction
+- Gemini used for unstructured statement extraction
+- Gemini used for SerpAPI search-result-to-JSON structuring
+- Rule-based fallback when Gemini is unavailable
 
-### Research Layer
+### Search and Research Layer
 
-- Mock research provider for local testing
-- SerpAPI provider support
-- Gemini-based summarization
+- SerpAPI for web search context
+- Mock research provider
+- Gemini summarization
 - Rule-based summarization fallback
-- Educational-only research context
+- Candidate discovery using controlled backend universe + SerpAPI/Gemini resolution
 
 ### Market Data Providers
 
 - Manual PostgreSQL snapshots
 - MFAPI for mutual fund NAV data
-- YFinance for ETF/stock market data
-- IndianAPI for India-focused stock/ETF data
-- AMFI latest NAV parser using AMFI NAVAll text data
+- AMFI latest NAV parser
+- YFinance
+- Yahoo chart API direct fallback
+- IndianAPI support
 
 ### Development Tools
 
@@ -223,7 +367,7 @@ FastAPI Backend
  ↓
 Business Modules
  ↓
-PostgreSQL + External Market Data APIs + Gemini AI + Research Providers
+PostgreSQL + External Providers + Gemini + SerpAPI
 ```
 
 ### 5.1 Backend Processing Flow
@@ -231,48 +375,59 @@ PostgreSQL + External Market Data APIs + Gemini AI + Research Providers
 ```text
 Profile Engine
  ↓
-Portfolio Engine / Latest Snapshot
+Portfolio Import / Portfolio Snapshot
  ↓
-Market Data Providers
+Instrument Resolution
  ↓
-Metrics Engine
+Portfolio Exposure Analysis
  ↓
-Risk Engine
+Historical Analysis
  ↓
-Research Context, optional
+Benchmark Comparison
  ↓
-Recommendation Engine
+External Candidate Discovery
  ↓
-AI Explanation Engine
+Backend Recommendation Scoring
  ↓
-Frontend UI + History Persistence
+AI Explanation
+ ↓
+Frontend UI + Optional Persistence
 ```
 
-### 5.2 Portfolio Import Flow
+### 5.2 New Upload-to-Recommendation Flow
 
 ```text
-Uploaded file
+Uploaded portfolio file
  ↓
-Detect file type
+File type detection
  ↓
-CSV/XLSX → deterministic extraction
-XLS → deterministic extraction where parser dependencies support it
-TXT/XML/text-readable PDF → text extraction + Gemini extraction
-Scanned/image PDF → OCR not implemented yet
+Structured parser or text extraction + Gemini extraction
  ↓
-Validate extracted rows
+Normalized holdings
  ↓
-Return valid_holdings and invalid_holdings
+Numeric validation and statement total validation
  ↓
-User/frontend reviews rows
+SerpAPI + Gemini instrument resolution
  ↓
-Import reviewed holdings
+Resolution cache lookup/store
  ↓
-Create snapshot and replace same-day snapshot holdings
+Fallback benchmark/category classification if AI fails
  ↓
-Portfolio summary uses latest snapshot
+Portfolio exposure analysis
  ↓
-Recommendation can be generated
+Historical performance analysis for resolved instruments
+ ↓
+Benchmark comparison
+ ↓
+External candidate discovery
+ ↓
+Candidate instrument resolution
+ ↓
+Backend recommendation scoring
+ ↓
+AI explanation or fallback explanation
+ ↓
+User review before any action
 ```
 
 ---
@@ -281,94 +436,545 @@ Recommendation can be generated
 
 ### 6.1 AI Explains, Backend Decides
 
-AI is used for explanation, not for core investment decisions.
+AI is used to explain backend-generated recommendations. AI does not decide the final recommendation.
 
-The backend creates structured recommendation data such as:
+Backend output example:
 
 ```json
 {
-  "suggested_action": "DIVERSIFY_MONTHLY_INVESTMENT",
+  "suggested_action": "DIVERSIFY_NEXT_MONTHLY_INVESTMENT",
   "suggested_amount": 2000,
   "reason_codes": [
-    "PORTFOLIO_CONCENTRATION_WARNING",
-    "ALLOCATION_PLAN_CREATED"
+    "HIGH_NIFTY_50_EXPOSURE",
+    "NO_MID_CAP_EXPOSURE",
+    "DIVERSIFICATION_RECOMMENDED"
   ],
   "allocation_plan": [
     {
-      "instrument_type": "MUTUAL_FUND",
-      "amount": 1000,
-      "reason": "Adds diversified professionally managed exposure."
+      "allocation_type": "CATEGORY_CANDIDATE",
+      "candidate_category": "FLEXI_CAP",
+      "amount": 700,
+      "status": "REQUIRES_INSTRUMENT_LEVEL_CHECKS"
     }
   ]
 }
 ```
 
-Gemini can then explain this output in plain English.
+Gemini may explain this in plain English, but Gemini must not override the backend.
+
+---
 
 ### 6.2 AI Extracts, Backend Validates
 
 Gemini can extract holdings from unstructured uploaded statement text.
-
-However, Gemini extraction is never blindly trusted.
 
 Safe flow:
 
 ```text
 Gemini extracts candidate holdings
 → backend validates required fields and numeric values
-→ valid_holdings and invalid_holdings are returned
+→ backend separates valid and invalid holdings
 → user/frontend reviews rows
 → backend imports reviewed holdings only
 ```
 
-### 6.3 No Market Prediction
+---
+
+### 6.3 AI Structures Messy Search Results
+
+For instrument resolution, the system uses:
+
+```text
+Uploaded ISIN/name
+→ SerpAPI search
+→ Gemini strict JSON metadata extraction
+→ backend validation
+→ cache storage
+```
+
+This avoids brittle hardcoded ISIN maps while still allowing backend-controlled validation.
+
+---
+
+### 6.4 No Market Prediction
 
 The project does not say:
 
-- Buy today because price will rise tomorrow.
-- Sell now because market will fall.
+- Buy today because the price will rise tomorrow.
+- Sell now because the market will fall.
 - This investment guarantees returns.
 
 Instead, the project says:
 
-- This recommendation may improve diversification.
-- This allocation better matches your risk profile.
-- This holding is concentrated and should be reviewed.
-- Market data is used for context, not guaranteed prediction.
+- This may improve diversification.
+- This portfolio has high overlap.
+- This category requires further historical checks.
+- This recommendation has low/medium/high confidence.
 
-### 6.4 Portfolio-Aware Recommendations
+---
 
-The system does not treat every month as a fresh start. It analyzes existing portfolio holdings from the latest snapshot and then suggests how future monthly investment may be allocated.
+### 6.5 Portfolio-Aware Recommendations
 
-### 6.5 Snapshot-Based Portfolio Safety
+The system does not treat every month as a fresh start. It analyzes the existing portfolio and then suggests how future monthly investment may be evaluated.
 
-The backend stores imported holdings as snapshots.
+Example:
 
-Each import batch receives:
+```text
+If existing holdings already contain multiple Nifty 50 ETFs,
+the backend should avoid blindly recommending another Nifty 50 ETF.
+```
+
+---
+
+### 6.6 Confidence-Gated Historical Analysis
+
+Historical analysis is performed only when an instrument is confidently resolved.
+
+```text
+resolved = true + yfinance_symbol/amfi_scheme_code available
+→ historical analysis can run
+
+resolved = false
+→ use only for exposure analysis, not historical scoring
+```
+
+---
+
+### 6.7 Conservative Defaults for Personal Use
+
+Because this application is intended for personal use first, the backend uses conservative behavior:
+
+- Default monthly amount: ₹2,000 if profile is missing
+- Default risk appetite: Moderate
+- Default time horizon: 5 years
+- Default experience level: Beginner
+- Recommendation confidence decreases when data is incomplete
+- User review is required before action
+
+---
+
+### 6.8 Snapshot-Based Portfolio Safety
+
+The backend stores imported holdings as snapshots. Each import batch receives:
 
 - `source_upload_id`
 - `snapshot_date`
 - `created_at`
 
-The latest snapshot is used for portfolio summary.
-
-If the same snapshot date is imported again, existing holdings for that date are replaced first. This prevents duplicate imports from double-counting holdings.
-
-### 6.6 Extensible Provider Architecture
-
-Market data, research, and AI providers are isolated behind provider registries. This makes it easier to add or replace providers later.
-
-### 6.7 Single-User MVP Boundary
-
-The current application behaves like a single-user MVP. It does not yet isolate data by authenticated user. Future multi-user support should add `user_id` across profile, holdings, uploads, recommendations, explanations, and related tables.
+The latest snapshot is used for portfolio summary. Same-day imports replace existing same-day snapshot holdings to prevent double-counting.
 
 ---
 
-## 7. Detailed Backend Module Explanation
+### 6.9 Extensible Provider Architecture
 
-The backend is organized into feature-oriented modules under `backend/app/`. Each module owns a specific business capability and usually includes some combination of routes, service logic, schemas, models, repositories, providers, validators, or middleware.
+Market data, research, AI, and analysis providers are isolated behind service/provider boundaries so the system can add new providers later.
 
-### 7.1 Application Entry Point
+---
+
+### 6.10 Single-User MVP Boundary
+
+The current application behaves like a single-user MVP. Future multi-user support must add `user_id` across profile, holdings, uploads, recommendations, explanations, caches, and audit logs.
+
+---
+
+## 7. New Intelligent Analysis Pipeline
+
+This section describes the newly added end-to-end logic.
+
+### 7.1 Groww-Like Structured Statement Parsing
+
+The deterministic parser supports Groww-like Excel statements that contain metadata rows before the holdings table.
+
+The parser can:
+
+- Detect the actual holdings header row
+- Normalize columns such as `Stock Name`, `ISIN`, `Quantity`, `Average buy price`, `Buy value`, `Closing price`, `Closing value`, and `Unrealised P&L`
+- Calculate missing fields when possible
+- Infer ETF/MF/stock type using basic name/ISIN rules
+- Validate row totals against statement summary
+
+Example normalized holding:
+
+```json
+{
+  "instrument_name": "NIP IND ETF NIFTY BEES",
+  "instrument_type": "ETF",
+  "isin": "INF204KB14I2",
+  "quantity": 10,
+  "average_cost": 263.74,
+  "invested_amount": 2637.4,
+  "current_price": 265.36,
+  "current_value": 2653.6,
+  "gain_loss": 16.2,
+  "gain_loss_percent": 0.61,
+  "confidence": "HIGH"
+}
+```
+
+---
+
+### 7.2 Statement Summary Validation
+
+The parser validates:
+
+```text
+sum(invested_amount) == statement invested value
+sum(current_value) == statement closing value
+sum(gain_loss) == statement unrealised P&L
+```
+
+Example validation block:
+
+```json
+{
+  "summary_found": true,
+  "summary_invested_value": 9358.2,
+  "calculated_invested_value": 9358.2,
+  "invested_value_matches": true,
+  "summary_current_value": 9243.96,
+  "calculated_current_value": 9243.96,
+  "current_value_matches": true,
+  "summary_gain_loss": -114.24,
+  "calculated_gain_loss": -114.24,
+  "gain_loss_matches": true
+}
+```
+
+---
+
+### 7.3 SerpAPI + Gemini Instrument Resolution
+
+For each holding, the backend builds targeted search queries:
+
+```text
+{ISIN} {instrument_name}
+{ISIN} NSE symbol ETF mutual fund
+{ISIN} Yahoo Finance NSE
+{ISIN} AMFI scheme code
+```
+
+SerpAPI returns search results. Gemini converts results into strict JSON.
+
+Resolved output example:
+
+```json
+{
+  "resolved": true,
+  "resolved_name": "SBI Nifty 50 ETF",
+  "resolved_symbol": "SETFNIF50",
+  "resolved_exchange": "NSE",
+  "yfinance_symbol": "SETFNIF50.NS",
+  "market_data_provider": "YFINANCE",
+  "benchmark": "NIFTY_50",
+  "exposure_category": "LARGE_CAP_INDEX",
+  "match_confidence": "HIGH"
+}
+```
+
+If Gemini fails due to quota or high demand, fallback classification is used:
+
+```json
+{
+  "resolved": false,
+  "provider_lookup_required": true,
+  "match_confidence": "MEDIUM",
+  "match_method": "RULE_BASED_FALLBACK_AFTER_AI_FAILURE",
+  "benchmark": "NIFTY_50",
+  "exposure_category": "LARGE_CAP_INDEX"
+}
+```
+
+Fallback classification can be used for exposure analysis but not for historical price analysis.
+
+---
+
+### 7.4 Resolution Cache
+
+Resolved instruments are stored in:
+
+```text
+backend/app/portfolio_import/resolution_cache.json
+```
+
+Purpose:
+
+- Avoid repeated Gemini calls
+- Reduce quota exhaustion
+- Speed up repeated uploads
+- Preserve high-confidence resolved metadata during local MVP development
+
+Future improvement:
+
+```text
+Move resolution cache to PostgreSQL table: instrument_resolution_cache
+```
+
+---
+
+### 7.5 Portfolio Exposure Analysis
+
+The exposure analysis module calculates:
+
+- Benchmark exposure
+- Category exposure
+- Instrument type exposure
+- Market data provider exposure
+- Primary benchmark
+- Primary exposure category
+- Overlap warnings
+- Diversification gaps
+- Candidate category hints
+- Data quality
+
+Example:
+
+```json
+{
+  "benchmark_exposure": {
+    "NIFTY_50": 70.4,
+    "NIFTY_NV20": 29.6
+  },
+  "category_exposure": {
+    "LARGE_CAP_INDEX": 70.4,
+    "VALUE_INDEX": 29.6
+  },
+  "overlap_warnings": [
+    "Multiple holdings track or closely relate to NIFTY 50 / large-cap index exposure.",
+    "High benchmark overlap: 100.0% of the portfolio is linked to NIFTY 50 or NIFTY 50 Value 20 style exposure."
+  ],
+  "diversification_gaps": [
+    "No mid-cap exposure detected.",
+    "No small-cap exposure detected.",
+    "No gold/hedge exposure detected.",
+    "No debt/liquid allocation detected."
+  ]
+}
+```
+
+---
+
+### 7.6 Historical Performance Analysis
+
+Historical analysis is run only for confidently resolved instruments.
+
+Metrics include:
+
+- 1M return
+- 3M return
+- 6M return
+- 1Y return
+- 3Y CAGR
+- 5Y CAGR
+- Annualized volatility
+- Maximum drawdown
+- Positive month ratio
+- Historical performance score
+- Downside risk score
+- Consistency score
+- Overall historical score
+
+Provider fallback order:
+
+```text
+yf.download
+→ yf.Ticker.history
+→ Yahoo chart API
+```
+
+Example output:
+
+```json
+{
+  "instrument_name": "SBI-ETF NIFTY 50",
+  "yfinance_symbol": "SETFNIF50.NS",
+  "successful_period": "yahoo_chart_api:5y",
+  "historical_analysis_available": true,
+  "data_quality": "GOOD",
+  "trailing_returns": {
+    "1m": -2.54,
+    "3m": -5.46,
+    "6m": -10.41,
+    "1y": -4.61
+  },
+  "cagr": {
+    "3y": 9.1,
+    "5y": null
+  },
+  "volatility_annualized_percent": 12.68,
+  "max_drawdown_percent": -16.95,
+  "scores": {
+    "overall_historical_score": 65
+  }
+}
+```
+
+---
+
+### 7.7 Benchmark Comparison
+
+Benchmark comparison compares instrument metrics against mapped benchmarks.
+
+Currently supported mappings include:
+
+```text
+NIFTY_50 → ^NSEI
+NIFTY_BANK → ^NSEBANK
+NIFTY_NV20 → ^NSEI proxy until exact Nifty 50 Value 20 historical index data is integrated
+```
+
+Comparison includes:
+
+- 1M, 3M, 6M, 1Y return difference
+- 3Y and 5Y CAGR difference
+- Volatility difference
+- Drawdown difference
+- Outperformed periods
+- Benchmark score
+
+---
+
+### 7.8 External Candidate Discovery
+
+Candidate discovery starts with portfolio gaps.
+
+If the current portfolio is heavily Nifty 50/large-cap oriented, the backend may shortlist candidate categories such as:
+
+- Flexi-cap mutual fund candidate
+- Large & mid-cap mutual fund candidate
+- Nifty Next 50 ETF/index fund candidate
+- Gold ETF candidate
+- Debt/liquid fund candidate
+
+It may also explicitly flag:
+
+```text
+Avoid duplicate Nifty 50 top-up
+```
+
+Candidate discovery does not directly create buy recommendations. It creates candidates for further analysis.
+
+---
+
+### 7.9 Candidate Instrument Resolution
+
+Phase 7B resolves candidate categories into possible actual instruments using:
+
+```text
+Candidate category
+→ SerpAPI search
+→ Gemini JSON extraction
+→ candidate_resolution_cache.json
+```
+
+Candidate result example:
+
+```json
+{
+  "candidate_resolution_method": "SERPAPI_PLUS_GEMINI_CANDIDATE_JSON_RESOLUTION",
+  "resolved_candidate_instruments": [
+    {
+      "instrument_name": "Example Gold ETF",
+      "instrument_type": "ETF",
+      "symbol": "EXAMPLE",
+      "exchange": "NSE",
+      "yfinance_symbol": "EXAMPLE.NS",
+      "benchmark": "GOLD",
+      "confidence": "MEDIUM"
+    }
+  ]
+}
+```
+
+If Gemini fails:
+
+```json
+{
+  "candidate_resolution_method": "CATEGORY_ONLY_FALLBACK_AFTER_AI_FAILURE",
+  "resolved_candidate_instruments": []
+}
+```
+
+---
+
+### 7.10 Backend Recommendation Scoring
+
+The recommendation scoring engine combines:
+
+```text
+Diversification score
++ Current holdings historical score
++ Benchmark score
++ Candidate score
++ Profile suitability score
+```
+
+It returns:
+
+- Suggested action
+- Suggested amount
+- Final recommendation score
+- Confidence level
+- Score breakdown
+- Allocation plan
+- Reason codes
+- Candidate scoring
+- Risk note
+- Data quality note
+- Next steps
+
+Suggested action examples:
+
+```text
+DIVERSIFY_NEXT_MONTHLY_INVESTMENT
+EVALUATE_EXTERNAL_CANDIDATES_BEFORE_INVESTING
+WAIT_FOR_MORE_DATA_OR_RESOLVE_INSTRUMENTS
+CONTINUE_DISCIPLINED_INVESTING_WITH_CHECKS
+```
+
+---
+
+### 7.11 Profile-Aware Suitability
+
+Recommendation scoring uses investor profile when available:
+
+```json
+{
+  "monthly_investment_amount": 2000,
+  "risk_appetite": "MODERATE",
+  "time_horizon_years": 5,
+  "experience_level": "BEGINNER",
+  "investment_goal": "LONG_TERM_WEALTH",
+  "preferred_instruments": ["ETF", "MUTUAL_FUND"]
+}
+```
+
+If profile is unavailable, defaults are used and the response includes:
+
+```text
+PROFILE_DEFAULTS_USED
+```
+
+---
+
+### 7.12 AI Recommendation Explanation
+
+The AI explanation layer receives only the backend recommendation JSON.
+
+Rules:
+
+- AI explains only backend output
+- AI does not override recommendation
+- AI does not invent prices or returns
+- AI does not create new buy/sell advice
+- If AI fails, fallback explanation is returned
+
+---
+
+## 8. Detailed Backend Module Explanation
+
+The backend is organized into feature-oriented modules under `backend/app/`.
+
+### 8.1 Application Entry Point
 
 **Path:**
 
@@ -376,30 +982,17 @@ The backend is organized into feature-oriented modules under `backend/app/`. Eac
 backend/app/main.py
 ```
 
-**Purpose:**
+Responsibilities:
 
-This is the FastAPI application entry point. It creates the FastAPI app, configures middleware, registers all feature routers, and exposes the root and health endpoints.
-
-**Main responsibilities:**
-
-- Create the FastAPI app instance
-- Apply optional internal API key middleware
-- Apply request logging middleware
-- Apply CORS middleware
-- Mount API routers under `/api/v1`
-- Register health check endpoint
-- Connect profile, instruments, portfolio, upload, market data, metrics, risk, recommendation, explanation, AI, and research modules
-
-**Key endpoints exposed directly:**
-
-```http
-GET /
-GET /api/v1/health
-```
+- Create FastAPI app
+- Register middleware
+- Configure CORS
+- Mount routers
+- Expose health endpoints
 
 ---
 
-### 7.2 Common Module
+### 8.2 Common Module
 
 **Path:**
 
@@ -407,65 +1000,18 @@ GET /api/v1/health
 backend/app/common/
 ```
 
-**Important files:**
+Responsibilities:
 
-```text
-constants.py
-errors.py
-responses.py
-internal_api_key.py
-logging_config.py
-request_logging.py
-```
-
-**Purpose:**
-
-The common module contains reusable project-level utilities and conventions used across backend modules.
-
-**Responsibilities:**
-
-- Define shared constants such as app version, supported markets, supported instrument types, and upload types
-- Define reusable application error classes
-- Standardize API response payloads
-- Protect backend routes with an optional internal API key
-- Configure backend logging
-- Attach request IDs and log request completion/failure details
-
-**Standard success response:**
-
-```json
-{
-  "success": true,
-  "message": "Success",
-  "data": {}
-}
-```
-
-**Internal API protection:**
-
-If `INTERNAL_API_KEY` is configured, protected backend routes require the following header:
-
-```http
-X-Internal-API-Key: your_internal_api_key
-```
-
-Public paths remain accessible:
-
-```text
-/
-/docs
-/redoc
-/openapi.json
-/api/v1/health
-```
-
-**Request logging:**
-
-The backend logs request method, path, query, status code, client host, duration, and request ID. Responses include an `X-Request-ID` header.
+- Shared constants
+- Error classes
+- API response wrappers
+- Optional internal API key middleware
+- Logging config
+- Request logging
 
 ---
 
-### 7.3 Configuration Module
+### 8.3 Configuration Module
 
 **Path:**
 
@@ -473,23 +1019,7 @@ The backend logs request method, path, query, status code, client host, duration
 backend/app/config.py
 ```
 
-**Purpose:**
-
-The configuration module reads environment variables and exposes settings through a centralized `settings` object.
-
-**Responsibilities:**
-
-- Store app name and environment
-- Store API prefix
-- Store database URL
-- Store logging level
-- Store optional internal API key
-- Store AI provider configuration
-- Store Gemini configuration
-- Store IndianAPI configuration
-- Store SerpAPI/research configuration
-
-**Important settings:**
+Important settings:
 
 ```text
 DATABASE_URL
@@ -500,17 +1030,17 @@ GEMINI_API_KEY
 GEMINI_MODEL
 INDIANAPI_API_KEY
 SERPAPI_API_KEY
+SERPAPI_BASE_URL
 RESEARCH_PROVIDER
 RESEARCH_USE_GEMINI_SUMMARY
+RESEARCH_COUNTRY
+RESEARCH_LANGUAGE
+RESEARCH_REQUEST_TIMEOUT_SECONDS
 ```
-
-**Why this matters:**
-
-External providers, database connection, AI features, logging, and route protection can be configured through environment variables without changing code.
 
 ---
 
-### 7.4 Database Module
+### 8.4 Database Module
 
 **Path:**
 
@@ -518,31 +1048,21 @@ External providers, database connection, AI features, logging, and route protect
 backend/app/db.py
 ```
 
-**Purpose:**
+Responsibilities:
 
-The database module creates the SQLAlchemy engine and session factory used by repository and service modules.
+- SQLAlchemy engine
+- Session factory
+- DB session helper
 
-**Responsibilities:**
-
-- Create PostgreSQL SQLAlchemy engine
-- Create `SessionLocal`
-- Provide `get_db_session()` helper
-
-**Current database pattern:**
+Production improvement:
 
 ```text
-PostgreSQL database connection through SQLAlchemy
-SessionLocal used directly in services/repositories
-DATABASE_URL read from environment settings with a local development default
+Replace manual migration scripts with Alembic.
 ```
-
-**Production improvement needed:**
-
-For production, `DATABASE_URL` should be explicitly configured through environment variables or secret management. Alembic should replace manual schema creation and development migration scripts for versioning, rollback, and deployment safety.
 
 ---
 
-### 7.5 Profiles Module
+### 8.5 Profiles Module
 
 **Path:**
 
@@ -550,31 +1070,21 @@ For production, `DATABASE_URL` should be explicitly configured through environme
 backend/app/profiles/
 ```
 
-**Important files:**
+Purpose:
 
-```text
-enums.py
-models.py
-schemas.py
-service.py
-routes.py
-```
+Stores investor profile fields used for suitability and allocation.
 
-**Purpose:**
-
-The profiles module stores and manages the investor profile. The recommendation engine uses this profile to decide monthly allocation logic and risk suitability.
-
-**Data captured:**
+Important profile fields:
 
 - Monthly investment amount
 - Risk appetite
-- Investment goal
-- Time horizon in years
+- Time horizon
 - Experience level
+- Investment goal
 - Preferred instruments
 - Preferred market
 
-**Main APIs:**
+Main APIs:
 
 ```http
 POST /api/v1/profile
@@ -582,13 +1092,9 @@ GET /api/v1/profile
 PUT /api/v1/profile
 ```
 
-**Current limitation:**
-
-The app currently behaves like a single-user MVP. Multi-user support will require adding `user_id` to profile and related tables.
-
 ---
 
-### 7.6 Instruments Module
+### 8.6 Instruments Module
 
 **Path:**
 
@@ -596,53 +1102,19 @@ The app currently behaves like a single-user MVP. Multi-user support will requir
 backend/app/instruments/
 ```
 
-**Important files:**
+Purpose:
+
+Stores normalized instruments such as stocks, ETFs, and mutual funds.
+
+Future improvement:
 
 ```text
-enums.py
-models.py
-schemas.py
-service.py
-routes.py
+Integrate resolved instrument metadata with this module.
 ```
-
-**Purpose:**
-
-The instruments module stores investment instruments such as stocks, ETFs, and mutual funds. Instruments act as normalized references that portfolio holdings can link to.
-
-**Supported instrument types:**
-
-```text
-STOCK
-ETF
-MUTUAL_FUND
-```
-
-**Important fields:**
-
-- Name
-- Instrument type
-- Market
-- Trading symbol
-- ISIN
-- Category
-- AMFI scheme code
-
-**Main APIs:**
-
-```http
-POST /api/v1/instruments
-GET /api/v1/instruments
-GET /api/v1/instruments/{instrument_id}
-```
-
-**Current limitation:**
-
-Imported holdings are not automatically matched to existing instruments by ISIN, symbol, or AMFI code yet. This is a high-priority future improvement.
 
 ---
 
-### 7.7 Portfolio Module
+### 8.7 Portfolio Module
 
 **Path:**
 
@@ -650,64 +1122,13 @@ Imported holdings are not automatically matched to existing instruments by ISIN,
 backend/app/portfolio/
 ```
 
-**Important files:**
+Purpose:
 
-```text
-enums.py
-models.py
-schemas.py
-service.py
-routes.py
-```
-
-**Purpose:**
-
-The portfolio module stores user holdings and calculates portfolio summary metrics. It is one of the core modules because recommendations depend on the latest portfolio snapshot.
-
-**Holding fields:**
-
-- Holding ID
-- Source upload ID
-- Snapshot date
-- Created timestamp
-- Optional linked instrument ID
-- Instrument name
-- Instrument type
-- Quantity
-- Average cost
-- Invested amount
-- Current value
-- Gain/loss
-- Gain/loss percentage
-
-**Main APIs:**
-
-```http
-POST /api/v1/portfolio/holdings
-GET /api/v1/portfolio/holdings
-GET /api/v1/portfolio/summary
-```
-
-**Portfolio summary calculates:**
-
-- Total invested
-- Current value
-- Gain/loss
-- Gain/loss percentage
-- Number of holdings
-- Allocation by instrument
-- Allocation by instrument type
-- Largest holding name
-- Largest holding percentage
-- Concentration warning
-
-**Snapshot behavior:**
-
-By default, `GET /portfolio/holdings` and `GET /portfolio/summary` work with the latest snapshot. This prevents older imports from mixing with the latest portfolio view.
+Stores holdings and calculates portfolio summary from latest snapshot.
 
 ---
 
-### 7.8 Portfolio Import Module
+### 8.8 Portfolio Import Module
 
 **Path:**
 
@@ -715,95 +1136,120 @@ By default, `GET /portfolio/holdings` and `GET /portfolio/summary` work with the
 backend/app/portfolio_import/
 ```
 
-**Important files:**
+Important files:
 
 ```text
-enums.py
-schemas.py
-routes.py
 service.py
 validators.py
 text_extractor.py
 llm_extractor.py
+serpapi_search_resolver.py
+gemini_instrument_resolver.py
+resolution_cache.json
 parsers/csv_excel_parser.py
 ```
 
-**Purpose:**
+Purpose:
 
-The portfolio import module lets users import holdings from uploaded files instead of manually entering each holding.
-
-**Current capabilities:**
-
-- Upload metadata endpoints
-- Upload file endpoint
-- CSV/XLSX deterministic extraction path
-- XLS extraction where parser dependencies support it
-- Direct CSV/XLSX import path
-- TXT/XML/text-based PDF extraction path
-- Password-protected text PDF extraction when the correct password is provided
-- Gemini-based unstructured extraction
-- Valid/invalid holdings validation
-- Reviewed holdings import
-- Snapshot-based duplicate protection
-
-**Main APIs:**
-
-```http
-POST /api/v1/portfolio/uploads
-GET /api/v1/portfolio/uploads
-GET /api/v1/portfolio/uploads/{upload_id}
-POST /api/v1/portfolio/uploads/file
-POST /api/v1/portfolio/uploads/file/import
-POST /api/v1/portfolio/uploads/file/extract
-POST /api/v1/portfolio/uploads/import-reviewed
-```
-
-**Important note about upload metadata APIs:**
-
-Upload metadata/list/detail APIs exist for MVP/stub usage, but upload history is not yet a production-grade persisted import batch history UI.
-
-**Structured file parser:**
-
-`parsers/csv_excel_parser.py` reads CSV/Excel files using pandas, maps known column aliases, validates required columns, and returns extracted holdings.
-
-**Required fields:**
-
-- `instrument_name`
-- `instrument_type`
-- `quantity`
-- `average_cost`
-- `invested_amount`
-- `current_value`
-
-**Alias support examples:**
-
-- `scheme_name`, `stock_name`, `holding` → `instrument_name`
-- `qty`, `units`, `no_of_units` → `quantity`
-- `avg_price`, `avg_nav` → `average_cost`
-- `market_value`, `present_value` → `current_value`
-
-**Text extraction:**
-
-`text_extractor.py` extracts readable text from TXT, XML, CSV, Excel, and text-based PDFs. Password-protected PDFs can be handled only if the correct password is provided. Scanned/image PDFs are not supported yet.
-
-**Gemini extraction:**
-
-`llm_extractor.py` sends extracted text to Gemini and asks for strict JSON containing only holdings. The prompt instructs Gemini not to extract personal identifiers and not to give financial advice.
-
-**Validation:**
-
-`validators.py` normalizes instrument types, cleans numeric values, validates required fields, and separates rows into:
-
-```json
-{
-  "valid_holdings": [],
-  "invalid_holdings": []
-}
-```
+Handles extraction, validation, instrument resolution, exposure analysis, historical analysis, benchmark comparison, candidate discovery, recommendation scoring, and explanation in the pre-import flow.
 
 ---
 
-### 7.9 Market Data Module
+### 8.9 Portfolio Analysis Module
+
+**Path:**
+
+```text
+backend/app/portfolio_analysis/service.py
+```
+
+Purpose:
+
+Calculates exposure and diversification gaps.
+
+---
+
+### 8.10 Historical Analysis Module
+
+**Path:**
+
+```text
+backend/app/historical_analysis/service.py
+```
+
+Purpose:
+
+Fetches and analyzes price history for resolved instruments.
+
+Metrics:
+
+- Returns
+- CAGR
+- Volatility
+- Drawdown
+- Positive month ratio
+- Historical score
+
+---
+
+### 8.11 Benchmark Analysis Module
+
+**Path:**
+
+```text
+backend/app/benchmark_analysis/service.py
+```
+
+Purpose:
+
+Compares instrument historical metrics with benchmark metrics.
+
+---
+
+### 8.12 Candidate Discovery Module
+
+**Path:**
+
+```text
+backend/app/candidate_discovery/
+```
+
+Important files:
+
+```text
+service.py
+candidate_instrument_resolver.py
+candidate_resolution_cache.json
+```
+
+Purpose:
+
+Discovers external candidate categories and resolves possible actual candidate instruments.
+
+---
+
+### 8.13 Recommendation Scoring Module
+
+**Path:**
+
+```text
+backend/app/recommendation_scoring/
+```
+
+Important files:
+
+```text
+service.py
+explanation_service.py
+```
+
+Purpose:
+
+Combines analysis layers into a backend-generated educational recommendation and creates an AI/fallback explanation.
+
+---
+
+### 8.14 Market Data Module
 
 **Path:**
 
@@ -811,22 +1257,11 @@ Upload metadata/list/detail APIs exist for MVP/stub usage, but upload history is
 backend/app/market_data/
 ```
 
-**Important files:**
+Purpose:
 
-```text
-enums.py
-models.py
-schemas.py
-service.py
-routes.py
-providers/
-```
+Provides market data provider abstraction.
 
-**Purpose:**
-
-The market data module provides latest and historical price/NAV information for instruments. It uses a provider abstraction so new sources can be added without changing the rest of the application.
-
-**Supported providers:**
+Supported providers:
 
 ```text
 MANUAL
@@ -834,732 +1269,252 @@ MFAPI
 AMFI
 YFINANCE
 INDIANAPI
+Yahoo chart API fallback through historical analysis module
 ```
-
-**Provider details:**
-
-- `MANUAL`: Reads manually stored market data snapshots from PostgreSQL.
-- `MFAPI`: Fetches Indian mutual fund NAV data using MFAPI scheme codes.
-- `AMFI`: Fetches latest mutual fund NAV from AMFI NAVAll text data.
-- `YFINANCE`: Fetches stock/ETF price history through yfinance.
-- `INDIANAPI`: Supports India-focused stock/ETF data when an API key is configured.
-
-**Main APIs:**
-
-```http
-GET /api/v1/market-data/providers
-GET /api/v1/market-data/providers/health
-GET /api/v1/market-data/indianapi/stock-search
-POST /api/v1/market-data/snapshots
-GET /api/v1/market-data/{instrument_id}/latest
-GET /api/v1/market-data/{instrument_id}/history
-GET /api/v1/market-data/{instrument_id}/preferred-source
-```
-
-**Current limitations:**
-
-- AMFI historical NAV parsing is not implemented.
-- Provider caching is not implemented.
-- Rate-limit handling is basic.
-- Production-grade provider failover is future work.
 
 ---
 
-### 7.10 Metrics Module
+### 8.15 Metrics, Risk, Recommendation, Explanation, Research Modules
 
-**Path:**
+Existing modules continue to support the broader MVP:
 
 ```text
 backend/app/metrics/
-```
-
-**Main API:**
-
-```http
-GET /api/v1/metrics/{instrument_id}/basic-performance
-```
-
-**Metrics calculated:**
-
-- Start value
-- Latest value
-- Absolute return
-- Return percentage
-- Number of valid data points
-- Message explaining whether enough data exists
-
-**Current limitation:**
-
-Advanced metrics such as CAGR, volatility, drawdown, XIRR, and benchmark comparison are not implemented yet.
-
----
-
-### 7.11 Risk Engine
-
-**Path:**
-
-```text
 backend/app/risk_engine/
-```
-
-**Main API:**
-
-```http
-GET /api/v1/risk/{instrument_id}/basic
-```
-
-**Risk levels:**
-
-```text
-LOW
-MODERATE
-HIGH
-INSUFFICIENT_DATA
-```
-
-**Current limitation:**
-
-Risk classification is intentionally simple. It does not yet include volatility, drawdown, sector concentration, credit risk, liquidity risk, or risk-adjusted returns.
-
----
-
-### 7.12 Recommendation Engine
-
-**Path:**
-
-```text
 backend/app/recommendation_engine/
-```
-
-**Main APIs:**
-
-```http
-POST /api/v1/recommendations/generate
-GET /api/v1/recommendations/latest
-GET /api/v1/recommendations/history
-```
-
-**Inputs used:**
-
-- Investor profile
-- Monthly investment amount
-- Risk appetite
-- Preferred instruments
-- Latest portfolio summary
-- Allocation by instrument type
-- Largest holding percentage
-- Concentration warning
-- Linked instrument risk notes
-- Optional research context
-
-**Recommendation actions:**
-
-```text
-COMPLETE_PROFILE_FIRST
-ADD_PORTFOLIO_FIRST
-CONTINUE_DISCIPLINED_INVESTING
-REVIEW_PORTFOLIO_DIVERSIFICATION
-DIVERSIFY_MONTHLY_INVESTMENT
-```
-
-**Recommendation output includes:**
-
-- Recommendation ID
-- Recommendation date
-- Suggested action
-- Suggested amount
-- Summary
-- Reason codes
-- Risk note
-- Disclaimer
-- Allocation plan
-- Score breakdown
-- Optional research context
-
-**Current limitation:**
-
-The recommendation engine is educational and rule-based. It is not a licensed advisory system and does not provide direct buy/sell instructions.
-
----
-
-### 7.13 AI Engine
-
-**Path:**
-
-```text
+backend/app/explanation_engine/
+backend/app/research/
 backend/app/ai_engine/
 ```
 
-**Main API:**
-
-```http
-GET /api/v1/ai/providers/status
-```
-
-**Supported providers:**
-
-```text
-MOCK
-GEMINI
-```
-
-**Current limitation:**
-
-There is no retry, caching, cost tracking, rate limiting, or automatic fallback if Gemini fails.
+Some older recommendation/explanation APIs still exist and can be retained for persisted recommendation history. The newer upload-time analysis pipeline returns immediate pre-import educational analysis.
 
 ---
 
-### 7.14 Explanation Engine
+## 9. Detailed Frontend Module Explanation
 
-**Path:**
+The frontend is a Next.js application organized around pages, reusable components, and API proxy routes.
 
-```text
-backend/app/explanation_engine/
-```
-
-**Main APIs:**
-
-```http
-POST /api/v1/explanations/recommendation
-GET /api/v1/explanations/latest
-GET /api/v1/explanations/history
-```
-
-**Purpose:**
-
-The explanation engine takes the latest backend-generated recommendation and produces a beginner-friendly explanation using the configured AI provider.
-
-**Current limitation:**
-
-Explanations depend on the latest recommendation. If no recommendation exists, explanation generation returns a not-found response.
-
----
-
-### 7.15 Research Module
-
-**Path:**
-
-```text
-backend/app/research/
-```
-
-**Important files:**
-
-```text
-schemas.py
-service.py
-routes.py
-status.py
-status_routes.py
-summarizer.py
-providers/base.py
-providers/mock_provider.py
-providers/serpapi_provider.py
-providers/registry.py
-```
-
-**Purpose:**
-
-The research module provides market, instrument, and custom research context. It is designed to enrich recommendations with general context while keeping the recommendation decision rule-based.
-
-**Main APIs:**
-
-```http
-GET /api/v1/research/market/india
-GET /api/v1/research/instrument/{instrument_id}
-POST /api/v1/research/query
-GET /api/v1/research/providers/status
-```
-
-**Capabilities:**
-
-- Mock research provider for local testing
-- SerpAPI provider support for search results
-- Gemini-based summarization
-- Rule-based summarization fallback
-- India market research context
-- Instrument-specific research context
-- Custom query support
-- Provider status reporting
-
-**Important safety boundary:**
-
-Research context is not used as a direct trading signal. It provides educational context only.
-
----
-
-### 7.16 Migration Scripts
-
-**Paths:**
-
-```text
-backend/migrate_portfolio_holdings_snapshot.py
-backend/migrate_recommendations_research_context.py
-```
-
-**Purpose:**
-
-These scripts support development-time schema updates for snapshot holdings and recommendation research context.
-
-**Production improvement needed:**
-
-Manual migration scripts should be replaced with Alembic migrations for versioning, rollback, and deployment safety.
-
----
-
-## 8. Detailed Frontend Module Explanation
-
-The frontend is a Next.js application organized around pages, reusable components, and API proxy routes. It calls frontend API routes under `/api/...`, and those proxy requests to the FastAPI backend.
-
-### 8.1 Frontend API Proxy Layer
-
-**Path:**
-
-```text
-frontend/src/app/api/
-```
-
-**Purpose:**
-
-The frontend API proxy layer forwards browser requests to the backend while keeping backend URLs centralized.
-
-**Responsibilities:**
-
-- Read `INTERNAL_API_BASE_URL`
-- Include backend headers such as `X-Internal-API-Key` when configured
-- Proxy JSON requests to backend
-- Proxy multipart file uploads to backend
-- Parse backend responses safely
-- Return `NextResponse.json()` to UI components
-
-**Implemented proxy areas:**
-
-- Health
-- Profile
-- Instruments
-- Portfolio holdings
-- Portfolio summary
-- Portfolio upload extraction
-- Reviewed import
-- Recommendations
-- Explanations
-- Research
-- Provider status
-
----
-
-### 8.2 Shared API Client / Types
-
-**Path:**
-
-```text
-frontend/src/lib/
-```
-
-**Purpose:**
-
-The shared frontend library contains reusable API helper functions and TypeScript types used by dashboard, portfolio, recommendations, explanations, and research components.
-
-**Current limitation:**
-
-Runtime schema validation with tools such as Zod is not implemented yet.
-
----
-
-### 8.3 Layout and Navigation
-
-**Path:**
-
-```text
-frontend/src/components/layout/
-```
-
-**Main component:**
-
-```text
-site-nav.tsx
-```
-
-**Navigation groups:**
+### 9.1 Current Frontend Areas
 
 - Dashboard
-- Setup
-- Portfolio
-- AI Workflow
-- History
+- Profile page
+- Instruments page
+- Portfolio page
+- Upload page
+- Recommendations page
+- Explanations page
+- Research page
+- History pages
 
 ---
 
-### 8.4 Dashboard Page
+### 9.2 Required Frontend Updates for New Logic
 
-**Path:**
-
-```text
-frontend/src/app/page.tsx
-frontend/src/components/dashboard/
-```
-
-**Displayed information:**
-
-- Backend health
-- Market provider health
-- AI provider status
-- Portfolio quick stats
-- Latest recommendation status
-- Latest explanation provider
-
----
-
-### 8.5 Profile Page
-
-**Path:**
+The upload page should be enhanced to display new response blocks:
 
 ```text
-frontend/src/app/profile/
-frontend/src/components/profile/
-```
-
-**Backend APIs used:**
-
-```http
-GET /api/profile
-POST /api/profile
-PUT /api/profile
+Uploaded holdings table
+Statement validation summary
+Instrument resolution status
+Portfolio exposure analysis
+Historical performance analysis
+Benchmark comparison
+External candidate discovery
+Backend recommendation
+AI/fallback explanation
+User review checklist
 ```
 
 ---
 
-### 8.6 Instruments Page
+### 9.3 Recommended Upload UI Sections
 
-**Path:**
+#### Section 1: Extraction Summary
 
-```text
-frontend/src/app/instruments/
-frontend/src/components/instruments/
-```
+Show:
 
-**Backend APIs used:**
+- Holdings detected
+- Valid holdings count
+- Invalid holdings count
+- Extraction method
+- File name
 
-```http
-GET /api/instruments
-POST /api/instruments
-```
+#### Section 2: Statement Validation
 
----
+Show:
 
-### 8.7 Portfolio Page
+- Invested value match
+- Current value match
+- Gain/loss match
+- Warnings
 
-**Path:**
+#### Section 3: Resolution Status
 
-```text
-frontend/src/app/portfolio/
-frontend/src/components/portfolio/
-```
+Show:
 
-**Features:**
+- Resolved holdings
+- Unresolved holdings
+- Confidence level
+- Provider lookup status
+- Cache usage
 
-- Add holdings manually
-- Link holdings to known instruments
-- View saved holdings
-- View total invested
-- View current value
-- View gain/loss
-- View allocation by instrument type
-- View allocation by instrument
-- View concentration warning
-- Display simple allocation charts using CSS/Tailwind bars
+#### Section 4: Exposure Analysis
 
-**Backend APIs used:**
+Show:
 
-```http
-GET /api/portfolio/holdings
-POST /api/portfolio/holdings
-GET /api/portfolio/summary
-GET /api/instruments
-```
+- Benchmark exposure
+- Category exposure
+- Instrument type exposure
+- Overlap warnings
+- Diversification gaps
 
----
+#### Section 5: Historical Analysis
 
-### 8.8 Upload Page
+Show:
 
-**Path:**
+- Holdings analyzed count
+- Holdings skipped count
+- Returns
+- CAGR
+- Volatility
+- Drawdown
+- Data quality
 
-```text
-frontend/src/app/upload/page.tsx
-```
+#### Section 6: Benchmark Comparison
 
-**Related proxy routes:**
+Show:
 
-```text
-frontend/src/app/api/portfolio/uploads/file/extract/route.ts
-frontend/src/app/api/portfolio/uploads/import-reviewed/route.ts
-```
+- Benchmark comparison available count
+- Skipped count
+- Relative returns
+- Relative risk
+- Benchmark score
 
-**Supported file types:**
+#### Section 7: External Candidate Discovery
 
-- CSV
-- XLSX
-- XLS where parser dependencies support it
-- TXT
-- PDF with readable text
-- XML treated as text
+Show:
 
-**Important upload constraints:**
+- Shortlisted categories
+- Resolved candidate instruments
+- Candidate flags
+- Provider resolution requirement
 
-- Text-based PDFs only
-- Scanned/image PDFs require OCR, which is not implemented yet
-- Frontend file validation should be kept in sync with backend parser support
+#### Section 8: Backend Recommendation
 
-**Implemented flow:**
-
-```text
-User selects file
- → Frontend sends FormData to extraction API
- → Backend returns valid_holdings and invalid_holdings
- → Frontend shows summary cards, valid rows, invalid rows, and warnings
- → User imports reviewed valid rows
- → Backend returns import summary
- → User can continue to portfolio/recommendation flow
-```
-
----
-
-### 8.9 Recommendations Page
-
-**Path:**
-
-```text
-frontend/src/app/recommendations/
-frontend/src/components/recommendations/
-```
-
-**Backend APIs used:**
-
-```http
-POST /api/recommendations/generate
-GET /api/recommendations/latest
-GET /api/recommendations/history
-```
-
----
-
-### 8.10 Explanations Page
-
-**Path:**
-
-```text
-frontend/src/app/explanations/
-frontend/src/components/explanations/
-```
-
-**Backend APIs used:**
-
-```http
-POST /api/explanations/recommendation
-GET /api/explanations/latest
-GET /api/explanations/history
-```
-
----
-
-### 8.11 Research Page
-
-**Path:**
-
-```text
-frontend/src/app/research/
-```
-
-**Backend APIs used:**
-
-```http
-GET /api/research/market/india
-GET /api/research/providers/status
-POST /api/research/query
-```
-
-**Safety boundary:**
-
-Research context is displayed as educational context only. It does not directly decide recommendations.
-
----
-
-### 8.12 History Pages
-
-**Paths:**
-
-```text
-frontend/src/app/recommendations/history/
-frontend/src/app/explanations/history/
-```
-
-**Purpose:**
-
-History pages show persisted recommendations and explanations from PostgreSQL.
-
----
-
-### 8.13 Styling and UX
-
-**Technology:**
-
-```text
-Tailwind CSS
-```
-
-**UX patterns:**
-
-- Card-based panels
-- Loading states
-- Error messages
-- Status badges
-- Summary cards
-- Color-coded warnings
-- Simple allocation bars
-
-**Current improvement opportunities:**
-
-- Add global error boundary
-- Add toast notifications
-- Add richer empty states
-- Add better mobile responsiveness checks
-- Add accessibility testing
-
----
-
-## 9. Portfolio Upload and Import Flow
-
-### 9.1 Current Status
-
-Portfolio upload/import is implemented across both backend and frontend as an MVP end-to-end flow.
-
-```text
-Upload portfolio file from frontend
- → Backend extracts holdings
- → Backend validates rows
- → Frontend shows valid/invalid holdings for review
- → User imports reviewed holdings
- → Backend creates latest snapshot
- → Portfolio summary can be refreshed/viewed
- → User generates portfolio-aware recommendation
-```
-
-### 9.2 Backend Upload APIs
-
-```http
-POST /api/v1/portfolio/uploads
-GET /api/v1/portfolio/uploads
-GET /api/v1/portfolio/uploads/{upload_id}
-POST /api/v1/portfolio/uploads/file
-POST /api/v1/portfolio/uploads/file/import
-POST /api/v1/portfolio/uploads/file/extract
-POST /api/v1/portfolio/uploads/import-reviewed
-```
-
-### 9.3 Frontend Upload Files
-
-```text
-frontend/src/app/upload/page.tsx
-frontend/src/app/api/portfolio/uploads/file/extract/route.ts
-frontend/src/app/api/portfolio/uploads/import-reviewed/route.ts
-```
-
-### 9.4 Backend Upload Files
-
-```text
-backend/app/portfolio_import/routes.py
-backend/app/portfolio_import/service.py
-backend/app/portfolio_import/parsers/csv_excel_parser.py
-backend/app/portfolio_import/text_extractor.py
-backend/app/portfolio_import/llm_extractor.py
-backend/app/portfolio_import/validators.py
-backend/app/portfolio_import/schemas.py
-```
-
-### 9.5 Supported Upload Paths
-
-#### Structured Path
-
-Used for:
-
-- CSV
-- XLSX
-- XLS where parser dependencies support it
-
-This path uses deterministic parsing and column alias mapping.
-
-#### AI-Assisted Path
-
-Used for:
-
-- TXT
-- XML treated as text
-- Text-based PDF where readable text extraction works
-- Unstructured statement text
-
-This path extracts readable text and sends it to Gemini for structured holdings JSON.
-
-> Scanned/image PDFs are not supported yet because OCR is not implemented.
-
-### 9.6 Privacy Principle
-
-Store parsed fields only. Do not store original sensitive documents unless explicitly required.
-
-Current LLM privacy limitation: sensitive-data masking before LLM calls is not fully implemented yet, so users should avoid uploading unnecessary personal information during MVP testing.
-
----
-
-## 10. Recommendation and Explanation Flow
-
-```text
-User creates profile
- ↓
-User adds/imports portfolio holdings
- ↓
-Portfolio summary is generated from latest snapshot
- ↓
-Optional research context is fetched
- ↓
-Recommendation engine analyzes profile + portfolio + optional context
- ↓
-Recommendation is saved
- ↓
-Explanation engine loads latest recommendation
- ↓
-AI provider generates explanation
- ↓
-Explanation is saved
- ↓
-Frontend displays recommendation and explanation
-```
-
-### 10.1 Recommendation Output
-
-A recommendation includes:
+Show:
 
 - Suggested action
 - Suggested amount
-- Summary
-- Reason codes
-- Risk note
-- Disclaimer
-- Allocation plan
+- Confidence level
 - Score breakdown
-- Optional research context
+- Allocation plan
+- Reason codes
 
-### 10.2 Explanation Output
+#### Section 9: AI Explanation
 
-An explanation includes:
+Show:
 
-- Provider
-- Beginner summary
-- Detailed explanation
-- Risk explanation
-- Disclaimer
+- Summary
+- Why
+- Allocation explanation
+- Cautions
+- Next steps
 
 ---
 
-## 11. API Summary
+## 10. Portfolio Upload, Extraction, Resolution, and Import Flow
+
+### 10.1 Current Pre-Import Analysis Flow
+
+```text
+Upload file
+ ↓
+Extract holdings
+ ↓
+Validate rows and totals
+ ↓
+Resolve instruments
+ ↓
+Analyze exposure
+ ↓
+Analyze historical data for resolved holdings
+ ↓
+Compare benchmarks
+ ↓
+Discover external candidates
+ ↓
+Generate backend recommendation
+ ↓
+Generate AI/fallback explanation
+ ↓
+User reviews
+ ↓
+User imports reviewed holdings if satisfied
+```
+
+### 10.2 Important Distinction
+
+The upload extraction endpoint now performs rich pre-import analysis. This is useful for personal review, but production should later split this into smaller APIs.
+
+---
+
+## 11. Recommendation and Explanation Flow
+
+### 11.1 New Upload-Time Recommendation Flow
+
+```text
+Extracted holdings
+ ↓
+Validated statement totals
+ ↓
+Resolved/fallback-classified instruments
+ ↓
+Exposure analysis
+ ↓
+Historical analysis
+ ↓
+Benchmark comparison
+ ↓
+Candidate discovery
+ ↓
+Profile-aware backend scoring
+ ↓
+AI explanation or fallback explanation
+```
+
+### 11.2 Backend Recommendation Output
+
+Includes:
+
+- Suggested action
+- Suggested amount
+- Profile context used
+- Final recommendation score
+- Confidence level
+- Score breakdown
+- Allocation plan
+- Reason codes
+- Candidate scoring
+- Risk note
+- Data quality note
+- Next steps
+
+### 11.3 AI Explanation Output
+
+Includes:
+
+- Explanation availability
+- Summary
+- Why
+- Key reason codes
+- Plain-language allocation
+- Cautions
+- Next steps
+
+---
+
+## 12. API Summary
 
 ### Health
 
@@ -1591,7 +1546,7 @@ GET /api/v1/portfolio/holdings
 GET /api/v1/portfolio/summary
 ```
 
-### Portfolio Import
+### Portfolio Import and Pre-Import Analysis
 
 ```http
 POST /api/v1/portfolio/uploads
@@ -1601,6 +1556,21 @@ POST /api/v1/portfolio/uploads/file
 POST /api/v1/portfolio/uploads/file/import
 POST /api/v1/portfolio/uploads/file/extract
 POST /api/v1/portfolio/uploads/import-reviewed
+```
+
+`POST /portfolio/uploads/file/extract` currently returns:
+
+```text
+valid_holdings
+invalid_holdings
+summary_validation
+portfolio_exposure_analysis
+historical_performance_analysis
+benchmark_comparison_analysis
+external_candidate_discovery
+backend_recommendation
+recommendation_explanation
+warnings
 ```
 
 ### Market Data
@@ -1660,9 +1630,9 @@ GET /api/v1/research/providers/status
 
 ---
 
-## 12. Setup Instructions
+## 13. Setup Instructions
 
-### 12.1 Backend Setup
+### 13.1 Backend Setup
 
 ```bash
 cd backend
@@ -1683,13 +1653,13 @@ Run backend:
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Open Swagger:
+Swagger:
 
 ```text
 http://localhost:8000/docs
 ```
 
-### 12.2 Frontend Setup
+### 13.2 Frontend Setup
 
 ```bash
 cd frontend
@@ -1698,15 +1668,13 @@ npm run lint
 npm run dev -- --hostname 0.0.0.0
 ```
 
-Open frontend:
+Frontend:
 
 ```text
 http://localhost:3000
 ```
 
-### 12.3 Backend Environment Variables
-
-Create backend `.env` from `.env.example` or local notes.
+### 13.3 Backend Environment Variables
 
 Example:
 
@@ -1719,8 +1687,12 @@ GEMINI_API_KEY=your_actual_key
 GEMINI_MODEL=gemini-2.5-flash
 INDIANAPI_API_KEY=optional_key
 SERPAPI_API_KEY=optional_key
+SERPAPI_BASE_URL=https://serpapi.com/search.json
 RESEARCH_PROVIDER=MOCK
 RESEARCH_USE_GEMINI_SUMMARY=true
+RESEARCH_COUNTRY=in
+RESEARCH_LANGUAGE=en
+RESEARCH_REQUEST_TIMEOUT_SECONDS=20
 ```
 
 Do not commit:
@@ -1730,78 +1702,49 @@ backend/.env
 frontend/.env.local
 ```
 
-### 12.4 Frontend Environment Variables
+### 13.4 Frontend Environment Variables
 
-Example `frontend/.env.local`:
+Example:
 
 ```text
 INTERNAL_API_BASE_URL=http://localhost:8000/api/v1
 INTERNAL_API_KEY=optional_internal_api_key_if_backend_requires_it
 ```
 
-If optional frontend basic auth exists in your local setup, configure it only when needed:
+### 13.5 Migration Note
 
-```text
-BASIC_AUTH_USER=optional_user
-BASIC_AUTH_PASSWORD=optional_password
-```
-
-### 12.5 Backend Migration Note
-
-If the `portfolio_holdings` table already exists, snapshot columns may need to be added.
-
-Expected columns:
-
-```text
-source_upload_id
-snapshot_date
-created_at
-```
-
-During development, migration scripts can be run from the backend virtual environment:
+Development scripts may exist:
 
 ```bash
-cd backend
-source .venv/bin/activate
 python migrate_portfolio_holdings_snapshot.py
 python migrate_recommendations_research_context.py
 ```
 
-> Production should use Alembic migrations instead of manual migration scripts.
+Production should use Alembic.
 
 ---
 
-## 13. Recommended User Flow
+## 14. Recommended User Flow
 
-### Current UI Flow
+### Current Personal-Use Flow
 
-1. Open Dashboard
-2. Create investor profile
-3. Create instruments
-4. Add portfolio holdings manually or upload statement
-5. Review imported holdings
-6. Import reviewed holdings
-7. View portfolio charts and summary
-8. Generate recommendation
-9. Generate AI explanation
-10. View recommendation history
-11. View explanation history
-12. Restart backend and confirm persisted data still exists
-
-### Upload Flow
-
-1. Open Upload page
-2. Select CSV/XLSX/XLS/TXT/PDF/XML file
-3. Extract holdings
-4. Review valid and invalid rows
-5. Import reviewed holdings
-6. View portfolio summary from latest snapshot
-7. Generate recommendation
-8. Generate explanation
+1. Create/update investor profile
+2. Upload portfolio statement
+3. Review extracted holdings
+4. Review statement validation
+5. Review instrument resolution confidence
+6. Review exposure analysis
+7. Review historical analysis
+8. Review benchmark comparison
+9. Review external candidate discovery
+10. Review backend recommendation
+11. Read AI/fallback explanation
+12. Decide whether to import reviewed holdings
+13. Do not take investment action until user review checklist is complete
 
 ---
 
-## 14. Smoke Test Checklist
+## 15. Smoke Test Checklist
 
 - Backend starts
 - Frontend starts
@@ -1812,85 +1755,94 @@ python migrate_recommendations_research_context.py
 - Profile saves
 - Instruments load/create
 - Portfolio holdings load/create
-- Portfolio charts show
+- Portfolio summary uses latest snapshot
 - CSV extraction succeeds
 - XLSX extraction succeeds
-- XLS extraction works where parser dependencies support it
+- Groww-like Excel extraction succeeds
+- Statement summary validation succeeds
 - TXT/Gemini extraction succeeds when Gemini is configured
 - Text-based PDF extraction succeeds
 - Reviewed import succeeds
 - Duplicate snapshot handling works
-- Portfolio summary uses latest snapshot
-- Recommendation generates after imported holdings
+- SerpAPI search works when configured
+- Gemini instrument resolution works when quota is available
+- Resolution cache is used on repeated uploads
+- Fallback exposure classification works when Gemini fails
+- Portfolio exposure analysis appears
+- Historical analysis appears
+- Yahoo chart API fallback works
+- Benchmark comparison appears
+- External candidate discovery appears
+- Candidate resolution cache works
+- Backend recommendation appears
+- AI explanation or fallback explanation appears
 - Recommendation history loads
-- Explanation generates
 - Explanation history loads
-- Gemini works if configured
-- Research provider status loads
-- India market research loads
-- AMFI latest NAV works
-- Latest recommendation survives backend restart
-- Latest explanation survives backend restart
 
 ---
 
-## 15. Current Limitations
+## 16. Current Limitations
 
 - Single-user MVP behavior; no `user_id`-based data isolation yet
 - No full authentication yet
 - No full authorization yet
 - Optional internal API key middleware is route protection, not user authentication
 - No Alembic migrations yet
-- CAS PDF parser not fully implemented yet
+- CAS parser not fully implemented yet
 - Broker-specific PDF parser not implemented yet
 - OCR for scanned/image statements not implemented yet
 - XML-specific structured parser not implemented yet
 - Transaction import not implemented yet
-- Automatic instrument matching by ISIN/symbol/AMFI code not fully implemented yet
 - Upload history UI not implemented yet
-- Upload metadata APIs are MVP/stub-style and not production-grade import history
+- Upload metadata APIs are MVP/stub-style
 - Snapshot comparison UI not implemented yet
 - AMFI historical NAV parser not implemented yet
+- Exact benchmark historical sources are missing for some strategy indices
 - Recommendation scoring is educational and rule-based, not a licensed advisory engine
 - Market data providers may have rate limits or API constraints
-- Provider caching is not implemented yet
+- Gemini free-tier quota may be exhausted during repeated testing
+- SerpAPI quota may be exhausted during repeated testing
+- Cache is local JSON, not DB-backed yet
 - No automated test suite yet
 - No production deployment pipeline yet
-- Monitoring, rate limiting, and audit logs are not production-grade yet
 - No sensitive-data masking before LLM calls yet
 
 ---
 
-## 16. Future Roadmap
+## 17. Future Roadmap
 
 ### Completed Recently
 
-- CSV/XLSX portfolio extraction
-- CSV/XLSX direct import
-- Gemini-based statement extraction
-- Reviewed holdings import
-- Snapshot-based duplicate protection
-- Latest snapshot portfolio summary
-- Backend upload-to-recommendation flow
-- Frontend upload/review/import workflow
-- End-to-end upload-to-summary-to-recommendation MVP flow
-- Request logging middleware
-- Optional internal API key middleware
-- Research provider status and research context support
+- Groww-like Excel parser
+- Header-row detection
+- Summary validation
+- Gain/loss extraction and calculation
+- SerpAPI + Gemini instrument resolution
+- Local resolution cache
+- Fallback exposure classification
+- Portfolio exposure analysis
+- Historical performance engine
+- Yahoo chart API fallback
+- Benchmark comparison engine
+- External candidate discovery
+- Candidate instrument resolution
+- Backend recommendation scoring
+- Profile-aware suitability scoring
+- AI/fallback recommendation explanation
 
 ### High Priority
 
-- Editable upload review table
-- Invalid-row correction UI
+- Frontend UI for new analysis sections
+- Profile integration into upload-time recommendation flow
+- Editable invalid-row correction UI
 - Upload history and import batch detail UI
 - Snapshot selector or historical snapshot view
-- Multi-user model with `user_id` across core tables
+- Multi-user model with `user_id`
 - Automated backend tests
 - Frontend smoke tests
-- Deployment guide
 - Alembic migrations
-- Error handling polish
-- Instrument matching by ISIN/symbol/AMFI code
+- Instrument resolution cache table
+- Candidate resolution cache table
 - Sensitive-data masking before LLM calls
 
 ### Product Enhancements
@@ -1901,22 +1853,23 @@ python migrate_recommendations_research_context.py
 - XML parser
 - Transaction import
 - AMFI historical NAV parser
-- Recommendation detail pages
-- Explanation detail pages
-- Advanced metrics: volatility, drawdown, CAGR, XIRR
+- Candidate historical scoring
+- Candidate benchmark comparison
+- Final recommendation review page
 - Portfolio snapshots over time
-- Instrument matching by ISIN/symbol/AMFI code
+- Tax-aware educational notes
+- Expense ratio and tracking error checks
+- Liquidity checks for ETFs
 
 ### AI and Research Enhancements
 
-- SerpAPI research hardening
-- OpenAI provider
+- Gemini quota/rate tracking
+- AI retry/caching/cost tracking
 - Azure OpenAI provider
-- Learning assistant
+- OpenAI provider
 - Natural language portfolio questions
 - MCP-compatible AI tools
-- Agentic orchestration
-- AI provider retry/caching/cost tracking
+- Agentic orchestration with backend guardrails
 
 ### Production Enhancements
 
@@ -1930,4 +1883,25 @@ python migrate_recommendations_research_context.py
 - Docker deployment
 - Cloud deployment
 - Secret management
-- Sensitive data masking before LLM calls
+- Privacy controls
+
+---
+
+## 18. Safety, Privacy, and User Review Checklist
+
+Before using any recommendation for real investment action, the user should review:
+
+```text
+Have all holdings been resolved with HIGH confidence?
+Were historical metrics available for all relevant instruments?
+Was benchmark comparison completed?
+Were external candidates resolved to real instruments?
+Were expense ratio and tracking error checked?
+Was liquidity checked for ETFs?
+Was portfolio overlap checked?
+Was risk appetite considered?
+Was time horizon considered?
+Was emergency fund considered?
+Was tax impact considered?
+Was the recommendation marked as educational only?
+

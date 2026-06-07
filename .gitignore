@@ -114,3 +114,4 @@ postgres_data/
 *.sqlite3
 repo_dump.md
 dump_repo.py
+resolution_cache.json
