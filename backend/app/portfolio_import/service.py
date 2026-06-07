@@ -24,7 +24,8 @@ from app.portfolio_import.gemini_instrument_resolver import resolve_holdings_ide
 from app.historical_analysis.service import analyze_holdings_historical_performance
 from app.benchmark_analysis.service import compare_holdings_with_benchmarks
 from app.candidate_discovery.service import discover_external_candidates
-
+from app.recommendation_scoring.service import generate_backend_recommendation_score
+from app.recommendation_scoring.explanation_service import explain_backend_recommendation_with_ai
 
 _UPLOAD_STORE: dict[str, PortfolioUploadResponse] = {}
 
@@ -163,6 +164,18 @@ async def extract_uploaded_portfolio_file(
             historical_performance_analysis=historical_performance_analysis,
             benchmark_comparison_analysis=benchmark_comparison_analysis,
         )
+
+        backend_recommendation = generate_backend_recommendation_score(
+            portfolio_exposure_analysis=portfolio_exposure_analysis,
+            historical_performance_analysis=historical_performance_analysis,
+            benchmark_comparison_analysis=benchmark_comparison_analysis,
+            external_candidate_discovery=external_candidate_discovery,
+            investor_profile=investor_profile,
+        )
+
+        recommendation_explanation = explain_backend_recommendation_with_ai(
+            backend_recommendation
+        )
         warnings = []
 
         summary_validation = parsed_result.get("summary_validation")
@@ -190,6 +203,8 @@ async def extract_uploaded_portfolio_file(
             "historical_performance_analysis": historical_performance_analysis,
             "external_candidate_discovery": external_candidate_discovery,
             "benchmark_comparison_analysis": benchmark_comparison_analysis,
+            "backend_recommendation": backend_recommendation,
+            "recommendation_explanation": recommendation_explanation,
             "warnings": warnings,
         }
     extracted_text_result = await extract_text_from_uploaded_file(
@@ -221,6 +236,18 @@ async def extract_uploaded_portfolio_file(
         historical_performance_analysis=historical_performance_analysis,
         benchmark_comparison_analysis=benchmark_comparison_analysis,
     )
+
+    backend_recommendation = generate_backend_recommendation_score(
+        portfolio_exposure_analysis=portfolio_exposure_analysis,
+        historical_performance_analysis=historical_performance_analysis,
+        benchmark_comparison_analysis=benchmark_comparison_analysis,
+        external_candidate_discovery=external_candidate_discovery,
+        investor_profile=investor_profile,
+    )
+
+    recommendation_explanation = explain_backend_recommendation_with_ai(
+        backend_recommendation
+    )
     return {
         "file_name": extracted_text_result["file_name"],
         "extraction_method": "GEMINI",
@@ -233,6 +260,8 @@ async def extract_uploaded_portfolio_file(
         "historical_performance_analysis": historical_performance_analysis,
         "benchmark_comparison_analysis": benchmark_comparison_analysis,
         "external_candidate_discovery": external_candidate_discovery,
+        "backend_recommendation": backend_recommendation,
+        "recommendation_explanation": recommendation_explanation,
         "warnings": llm_result.get("warnings", []),
     }
 
