@@ -44,7 +44,7 @@ def create_profile(profile_data: InvestorProfileCreate) -> InvestorProfileRespon
 def get_profile() -> InvestorProfileResponse | None:
     db: Session = SessionLocal()
 
-    profile = db.query(Profile).first()
+    profile = db.query(Profile).order_by(Profile.id.desc()).first()
 
     if not profile:
         db.close()
