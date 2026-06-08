@@ -1,9 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float
 
-from app.db import engine
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from app.models_base import Base
 
 
 class Profile(Base):
@@ -18,6 +15,3 @@ class Profile(Base):
     preferred_instruments = Column(String)
     preferred_market = Column(String)
 
-
-# Create table
-Base.metadata.create_all(bind=engine)

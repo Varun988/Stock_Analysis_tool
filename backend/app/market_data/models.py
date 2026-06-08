@@ -1,9 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Date
 
-from app.db import engine
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from app.models_base import Base
 
 
 class MarketDataSnapshot(Base):
@@ -21,4 +18,3 @@ class MarketDataSnapshot(Base):
     source = Column(String)
 
 
-Base.metadata.create_all(bind=engine)

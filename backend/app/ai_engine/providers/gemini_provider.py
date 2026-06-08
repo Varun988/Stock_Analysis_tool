@@ -1,14 +1,16 @@
 import json
+import time
 from json import JSONDecodeError
 
 from google import genai
 
+from app.ai_engine.cost_guard import assert_ai_call_allowed, build_ai_request_hash
 from app.ai_engine.providers.base import AIExplanationProvider
 from app.ai_engine.schemas import AIExplanationRequest, AIExplanationResponse
-from app.config import settings
-import time
-from app.ai_engine.cost_guard import assert_ai_call_allowed, build_ai_request_hash
 from app.cache.service import log_ai_call
+from app.config import settings
+from app.privacy.masking import mask_sensitive_text
+
 
 class GeminiAIExplanationProvider(AIExplanationProvider):
     """Gemini-powered AI explanation provider."""
@@ -85,7 +87,7 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
         ]
 
         return "\n".join(prompt_lines)
-        
+
     def _clean_json_text(self, text: str) -> str:
         cleaned_text = text.strip()
 
@@ -132,7 +134,10 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
         self._ensure_configured()
 
         client = genai.Client(api_key=settings.gemini_api_key)
-        prompt = self._build_prompt(request)
+
+        raw_prompt = self._build_prompt(request)
+        prompt_masking_result = mask_sensitive_text(raw_prompt)
+        prompt = prompt_masking_result.masked_text
 
         purpose = "RECOMMENDATION_EXPLANATION"
         request_hash = build_ai_request_hash(
@@ -190,6 +195,9 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
             )
             raise RuntimeError("Gemini returned an empty response.")
 
+        response_masking_result = mask_sensitive_text(response_text)
+        safe_response_text = response_masking_result.masked_text
+
         latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
         log_ai_call(
             provider="GEMINI",
@@ -197,13 +205,13 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
             purpose=purpose,
             request_hash=request_hash,
             input_text=prompt,
-            output_text=response_text,
+            output_text=safe_response_text,
             cache_hit=False,
             status="SUCCESS",
             latency_ms=latency_ms,
         )
 
-        parsed_response = self._parse_response_text(response_text)
+        parsed_response = self._parse_response_text(safe_response_text)
 
         return AIExplanationResponse(
             provider="GEMINI",

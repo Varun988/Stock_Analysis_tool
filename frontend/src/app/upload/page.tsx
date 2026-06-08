@@ -148,6 +148,47 @@ type BenchmarkComparisonAnalysis = {
   warnings?: string[];
 };
 
+type CandidateQualityCheck = {
+  status?: string | null;
+  value?: string | number | null;
+  note?: string | null;
+};
+
+type CandidateReviewInstrument = {
+  candidate_category?: string | null;
+  isin?: string | null;
+  amfi_scheme_code?: string | null;
+  instrument_name?: string | null;
+  instrument_type?: string | null;
+  nse_symbol?: string | null;
+  yfinance_symbol?: string | null;
+  benchmark?: string | null;
+  exposure_category?: string | null;
+  verification_status?: string | null;
+  final_recommendation_status?: string | null;
+
+  candidate_analysis_score?: number | null;
+  candidate_analysis_status?: string | null;
+  candidate_analysis_note?: string | null;
+  profile_suitability_score?: number | null;
+  profile_suitability_reasons?: string[];
+  profile_suitability_warnings?: string[];
+  final_candidate_review_score?: number | null;
+  review_score_note?: string | null;
+
+  candidate_historical_analysis?: HistoricalHoldingResult | null;
+  candidate_benchmark_comparison?: BenchmarkComparisonResult | null;
+
+  mf_review_required?: boolean;
+  mf_review_status?: string | null;
+  mf_pending_checks?: string[];
+  mf_quality_checks?: Record<string, CandidateQualityCheck>;
+  mf_review_warnings?: string[];
+
+  candidate_rank?: number;
+  ranking_basis?: string | null;
+};
+
 type Candidate = {
   candidate_id?: string;
   instrument_name?: string;
@@ -164,9 +205,23 @@ type Candidate = {
   portfolio_gap_reasons?: string[];
   profile_suitability_score?: number;
   profile_suitability_reasons?: string[];
-  resolved_candidate_instruments?: Array<Record<string, unknown>>;
+  resolved_candidate_instruments?: CandidateReviewInstrument[];
   candidate_resolution_method?: string;
   candidate_resolution_warnings?: string[];
+
+  category_review_status?: string | null;
+  category_review_note?: string | null;
+  reviewable_instruments_count?: number;
+  benchmark_pending_instruments_count?: number;
+  analyzed_instruments_count?: number;
+  placeholder_instruments_count?: number;
+  top_final_candidate_review_score?: number | null;
+
+  verified_candidate_instruments_count?: number;
+  placeholder_candidate_instruments_count?: number;
+  ranked_candidate_instruments?: CandidateReviewInstrument[];
+  ranked_candidate_instruments_count?: number;
+  top_candidate_instrument?: CandidateReviewInstrument | null;
 };
 
 type ExternalCandidateDiscovery = {
@@ -231,6 +286,15 @@ type ExtractionData = {
   backend_recommendation?: BackendRecommendation | null;
   recommendation_explanation?: RecommendationExplanation | null;
   warnings: string[];
+};
+
+type CandidateResolveResponse = {
+  success?: boolean;
+  resolved_candidates?: Candidate[];
+  resolved_candidates_count?: number;
+  warnings?: string[];
+  next_steps?: string[];
+  detail?: string;
 };
 
 type ApiResponse<T> = {
@@ -347,19 +411,29 @@ function statusBadgeClass(status?: string | null): string {
       "RESOLVED",
       "HIGH CONFIDENCE",
       "AVAILABLE",
+      "PASS",
+      "PASSED",
+      "FRESH",
     ].includes(normalizedStatus)
   ) {
     return "border-emerald-500/40 bg-emerald-950/50 text-emerald-200";
   }
 
-  if (["MEDIUM", "LIMITED", "PARTIAL"].includes(normalizedStatus)) {
+  if (
+    ["MEDIUM", "LIMITED", "PARTIAL"].includes(normalizedStatus) ||
+    normalizedStatus.includes("PENDING") ||
+    normalizedStatus.includes("REQUIRES") ||
+    normalizedStatus.includes("PARTIAL") ||
+    normalizedStatus.includes("WARNING")
+  ) {
     return "border-amber-500/40 bg-amber-950/50 text-amber-200";
   }
 
   if (
-    ["LOW", "INSUFFICIENT", "FALSE", "UNRESOLVED", "SKIPPED"].includes(
+    ["LOW", "INSUFFICIENT", "FALSE", "UNRESOLVED", "SKIPPED", "FAIL", "FAILED"].includes(
       normalizedStatus
-    )
+    ) ||
+    normalizedStatus.includes("FAILED")
   ) {
     return "border-rose-500/40 bg-rose-950/50 text-rose-200";
   }
@@ -675,17 +749,25 @@ function BenchmarkComparisonPanel({
 
 function CandidateDiscoveryPanel({
   discovery,
+  resolvedCandidatesByCategory,
+  resolvingCandidateCategory,
+  onEvaluateCandidate,
 }: {
   discovery?: ExternalCandidateDiscovery | null;
+  resolvedCandidatesByCategory: Record<string, Candidate>;
+  resolvingCandidateCategory: string | null;
+  onEvaluateCandidate: (candidate: Candidate) => void;
 }) {
   if (!discovery) {
     return null;
   }
 
+  const shortlistedCandidates = discovery.shortlisted_candidates ?? [];
+
   return (
     <AnalysisCard
       title="External Candidate Discovery"
-      subtitle="Candidate categories for further analysis. These are not final buy recommendations."
+      subtitle="Candidate categories and review candidates for further analysis. These are not final buy recommendations."
     >
       <div className="grid gap-4 md:grid-cols-3">
         <KeyValue label="Scope" value={discovery.candidate_discovery_scope ?? "—"} />
@@ -693,40 +775,268 @@ function CandidateDiscoveryPanel({
         <KeyValue label="Watchlist" value={discovery.watchlist_candidates_count ?? 0} />
       </div>
 
-      <div className="mt-5 space-y-3">
-        {(discovery.shortlisted_candidates ?? []).map((candidate, index) => (
-          <div
-            key={candidate.candidate_id ?? `${candidate.candidate_category}-${index}`}
-            className="rounded-xl border border-slate-700 bg-slate-950/50 p-4"
-          >
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-semibold text-slate-100">
-                  {candidate.instrument_name ?? formatLabel(candidate.candidate_category)}
-                </p>
-                <p className="mt-1 text-sm text-slate-400">{candidate.reason_considered}</p>
+      {shortlistedCandidates.length === 0 && (
+        <p className="mt-5 text-sm text-slate-400">No shortlisted external candidates available.</p>
+      )}
+
+      <div className="mt-5 space-y-4">
+        {shortlistedCandidates.map((candidate, index) => {
+          const candidateCategory = candidate.candidate_category ?? "";
+          const resolvedCandidate =
+            resolvedCandidatesByCategory[candidateCategory] ?? candidate;
+          const rankedInstruments = resolvedCandidate.ranked_candidate_instruments ?? [];
+          const topCandidate =
+            resolvedCandidate.top_candidate_instrument ?? rankedInstruments[0];
+          const isResolving = resolvingCandidateCategory === candidateCategory;
+
+          return (
+            <div
+              key={candidate.candidate_id ?? `${candidate.candidate_category}-${index}`}
+              className="rounded-xl border border-slate-700 bg-slate-950/50 p-4"
+            >
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="font-semibold text-slate-100">
+                    {resolvedCandidate.instrument_name ?? formatLabel(resolvedCandidate.candidate_category)}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">{resolvedCandidate.reason_considered}</p>
+
+                  {resolvedCandidate.category_review_status && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <StatusBadge label={resolvedCandidate.category_review_status} />
+                      {resolvedCandidate.risk_bucket && <StatusBadge label={resolvedCandidate.risk_bucket} />}
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-left md:text-right">
+                  <p className="text-sm text-slate-400">Gap / Review score</p>
+                  <p className="font-semibold text-emerald-300">
+                    {resolvedCandidate.top_final_candidate_review_score ??
+                      resolvedCandidate.portfolio_gap_score ??
+                      resolvedCandidate.candidate_final_score ??
+                      "—"}
+                  </p>
+                </div>
               </div>
-              <div className="text-left md:text-right">
-                <p className="text-sm text-slate-400">Gap / Final score</p>
-                <p className="font-semibold text-emerald-300">
-                  {candidate.portfolio_gap_score ?? candidate.candidate_final_score ?? "—"}
-                </p>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => onEvaluateCandidate(candidate)}
+                  disabled={isResolving || !candidateCategory}
+                  className="rounded-lg bg-emerald-500 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                >
+                  {isResolving ? "Evaluating..." : "Evaluate Candidate"}
+                </button>
               </div>
+
+              {resolvedCandidate.category_review_note && (
+                <p className="mt-3 rounded-lg border border-sky-500/30 bg-sky-950/20 p-3 text-xs text-sky-100">
+                  {resolvedCandidate.category_review_note}
+                </p>
+              )}
+
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <KeyValue
+                  label="Verified"
+                  value={resolvedCandidate.verified_candidate_instruments_count ?? 0}
+                />
+                <KeyValue
+                  label="Analyzed"
+                  value={resolvedCandidate.analyzed_instruments_count ?? 0}
+                />
+                <KeyValue
+                  label="Benchmark Pending"
+                  value={resolvedCandidate.benchmark_pending_instruments_count ?? 0}
+                />
+                <KeyValue
+                  label="Placeholders"
+                  value={resolvedCandidate.placeholder_instruments_count ?? 0}
+                />
+              </div>
+
+              {(resolvedCandidate.candidate_flags?.length ?? 0) > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {resolvedCandidate.candidate_flags?.map((flag) => <StatusBadge key={flag} label={flag} />)}
+                </div>
+              )}
+
+              {topCandidate && (
+                <div className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-950/10 p-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-emerald-300">
+                        Top review candidate
+                      </p>
+                      <h3 className="mt-1 font-semibold text-slate-100">
+                        {topCandidate.instrument_name ?? "Unnamed candidate"}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {formatLabel(topCandidate.instrument_type)} ·{" "}
+                        {topCandidate.yfinance_symbol ??
+                          topCandidate.nse_symbol ??
+                          topCandidate.amfi_scheme_code ??
+                          topCandidate.isin ??
+                          "No symbol"}
+                      </p>
+                    </div>
+
+                    <StatusBadge label={topCandidate.final_recommendation_status} />
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                    <KeyValue
+                      label="Historical Score"
+                      value={formatNumber(topCandidate.candidate_analysis_score)}
+                    />
+                    <KeyValue
+                      label="Profile Score"
+                      value={formatNumber(topCandidate.profile_suitability_score)}
+                    />
+                    <KeyValue
+                      label="Final Review Score"
+                      value={formatNumber(topCandidate.final_candidate_review_score)}
+                    />
+                    <KeyValue
+                      label="Historical Data"
+                      value={
+                        <StatusBadge
+                          label={
+                            topCandidate.candidate_historical_analysis
+                              ?.historical_analysis_available
+                              ? topCandidate.candidate_historical_analysis?.data_quality
+                              : "INSUFFICIENT"
+                          }
+                        />
+                      }
+                    />
+                  </div>
+
+                  {topCandidate.review_score_note && (
+                    <p className="mt-3 text-xs text-slate-400">{topCandidate.review_score_note}</p>
+                  )}
+
+                  {topCandidate.candidate_benchmark_comparison && (
+                    <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/50 p-3 text-xs text-slate-300">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <span>
+                          Benchmark:{" "}
+                          {formatLabel(topCandidate.candidate_benchmark_comparison.benchmark)}
+                        </span>
+                        <StatusBadge
+                          label={
+                            topCandidate.candidate_benchmark_comparison
+                              .benchmark_comparison_available
+                              ? "AVAILABLE"
+                              : "BENCHMARK_PENDING"
+                          }
+                        />
+                      </div>
+                      {topCandidate.candidate_benchmark_comparison.message && (
+                        <p className="mt-2 text-slate-500">
+                          {topCandidate.candidate_benchmark_comparison.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {topCandidate.mf_review_required && (
+                    <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <h4 className="font-semibold text-amber-200">Mutual fund review checks</h4>
+                        <StatusBadge label={topCandidate.mf_review_status} />
+                      </div>
+
+                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                        {Object.entries(topCandidate.mf_quality_checks ?? {}).map(([key, check]) => (
+                          <div
+                            key={key}
+                            className="rounded-lg border border-slate-700 bg-slate-950/50 p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-medium text-slate-200">
+                                {formatLabel(key)}
+                              </span>
+                              <StatusBadge label={check.status} />
+                            </div>
+                            <p className="mt-1 text-xs text-slate-400">
+                              Value: {check.value ?? "—"}
+                            </p>
+                            {check.note && (
+                              <p className="mt-1 text-xs text-slate-500">{check.note}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {(topCandidate.mf_review_warnings?.length ?? 0) > 0 && (
+                        <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-100/90">
+                          {topCandidate.mf_review_warnings?.map((warning) => (
+                            <li key={warning}>{warning}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {rankedInstruments.length > 1 && (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-800 text-sm">
+                    <thead className="bg-slate-950/70 text-left text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3">Rank</th>
+                        <th className="px-4 py-3">Candidate</th>
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Historical</th>
+                        <th className="px-4 py-3">Profile</th>
+                        <th className="px-4 py-3">Final</th>
+                        <th className="px-4 py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {rankedInstruments.map((instrument) => (
+                        <tr
+                          key={`${instrument.instrument_name}-${instrument.candidate_rank ?? "rank"}`}
+                        >
+                          <td className="px-4 py-3 text-slate-300">
+                            {instrument.candidate_rank ?? "—"}
+                          </td>
+                          <td className="px-4 py-3 text-slate-200">
+                            {instrument.instrument_name ?? "—"}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">
+                            {formatLabel(instrument.instrument_type)}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">
+                            {formatNumber(instrument.candidate_analysis_score)}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">
+                            {formatNumber(instrument.profile_suitability_score)}
+                          </td>
+                          <td className="px-4 py-3 text-emerald-300">
+                            {formatNumber(instrument.final_candidate_review_score)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge label={instrument.final_recommendation_status} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {(resolvedCandidate.resolved_candidate_instruments?.length ?? 0) > 0 && rankedInstruments.length === 0 && (
+                <p className="mt-3 text-xs text-emerald-300">
+                  {resolvedCandidate.resolved_candidate_instruments?.length} candidate instrument(s) resolved for further checks.
+                </p>
+              )}
             </div>
-
-            {(candidate.candidate_flags?.length ?? 0) > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {candidate.candidate_flags?.map((flag) => <StatusBadge key={flag} label={flag} />)}
-              </div>
-            )}
-
-            {(candidate.resolved_candidate_instruments?.length ?? 0) > 0 && (
-              <p className="mt-3 text-xs text-emerald-300">
-                {candidate.resolved_candidate_instruments?.length} candidate instrument(s) resolved for further checks.
-              </p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </AnalysisCard>
   );
@@ -856,7 +1166,17 @@ function RecommendationExplanationPanel({
   );
 }
 
-function AnalysisPanels({ extractionData }: { extractionData: ExtractionData }) {
+function AnalysisPanels({
+  extractionData,
+  resolvedCandidatesByCategory,
+  resolvingCandidateCategory,
+  onEvaluateCandidate,
+}: {
+  extractionData: ExtractionData;
+  resolvedCandidatesByCategory: Record<string, Candidate>;
+  resolvingCandidateCategory: string | null;
+  onEvaluateCandidate: (candidate: Candidate) => void;
+}) {
   return (
     <div className="mt-8 space-y-6">
       <StatementValidationPanel validation={extractionData.summary_validation} />
@@ -864,7 +1184,12 @@ function AnalysisPanels({ extractionData }: { extractionData: ExtractionData }) 
       <ExposureAnalysisPanel analysis={extractionData.portfolio_exposure_analysis} />
       <HistoricalAnalysisPanel analysis={extractionData.historical_performance_analysis} />
       <BenchmarkComparisonPanel analysis={extractionData.benchmark_comparison_analysis} />
-      <CandidateDiscoveryPanel discovery={extractionData.external_candidate_discovery} />
+      <CandidateDiscoveryPanel
+        discovery={extractionData.external_candidate_discovery}
+        resolvedCandidatesByCategory={resolvedCandidatesByCategory}
+        resolvingCandidateCategory={resolvingCandidateCategory}
+        onEvaluateCandidate={onEvaluateCandidate}
+      />
       <BackendRecommendationPanel recommendation={extractionData.backend_recommendation} />
       <RecommendationExplanationPanel explanation={extractionData.recommendation_explanation} />
       <ReviewBeforeActionCard />
@@ -897,6 +1222,12 @@ export default function UploadPage() {
   const [importData, setImportData] = useState<ImportData | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [resolvedCandidatesByCategory, setResolvedCandidatesByCategory] = useState<
+    Record<string, Candidate>
+  >({});
+  const [resolvingCandidateCategory, setResolvingCandidateCategory] = useState<
+    string | null
+  >(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploadNoticeMessage, setUploadNoticeMessage] = useState<string | null>(
     null
@@ -908,6 +1239,8 @@ export default function UploadPage() {
     setSelectedFile(file);
     setExtractionData(null);
     setImportData(null);
+    setResolvedCandidatesByCategory({});
+    setResolvingCandidateCategory(null);
     setErrorMessage(null);
 
     if (!file) {
@@ -948,6 +1281,8 @@ export default function UploadPage() {
     setErrorMessage(null);
     setExtractionData(null);
     setImportData(null);
+    setResolvedCandidatesByCategory({});
+    setResolvingCandidateCategory(null);
 
     try {
       const formData = new FormData();
@@ -975,6 +1310,58 @@ export default function UploadPage() {
       );
     } finally {
       setIsExtracting(false);
+    }
+  }
+
+  async function handleEvaluateCandidate(candidate: Candidate) {
+    const candidateCategory = candidate.candidate_category;
+
+    if (!candidateCategory) {
+      setErrorMessage("Candidate category is missing.");
+      return;
+    }
+
+    setResolvingCandidateCategory(candidateCategory);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/candidates/resolve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          candidate_id: candidate.candidate_id,
+          candidate_category: candidateCategory,
+          risk_appetite: "MODERATE",
+          time_horizon_years: 5,
+          monthly_investment_amount: 2000,
+          include_analysis: true,
+        }),
+      });
+
+      const result = (await response.json()) as CandidateResolveResponse;
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.detail ?? "Failed to evaluate candidate.");
+      }
+
+      const resolvedCandidate = result.resolved_candidates?.[0];
+
+      if (!resolvedCandidate) {
+        throw new Error("Candidate resolve response did not include a resolved candidate.");
+      }
+
+      setResolvedCandidatesByCategory((current) => ({
+        ...current,
+        [candidateCategory]: resolvedCandidate,
+      }));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unknown candidate evaluation error."
+      );
+    } finally {
+      setResolvingCandidateCategory(null);
     }
   }
 
@@ -1167,7 +1554,12 @@ export default function UploadPage() {
               <InvalidHoldingsTable invalidHoldings={extractionData.invalid_holdings} />
             )}
 
-            <AnalysisPanels extractionData={extractionData} />
+            <AnalysisPanels
+              extractionData={extractionData}
+              resolvedCandidatesByCategory={resolvedCandidatesByCategory}
+              resolvingCandidateCategory={resolvingCandidateCategory}
+              onEvaluateCandidate={handleEvaluateCandidate}
+            />
 
             <div className="mt-8 flex flex-wrap gap-3">
               <button

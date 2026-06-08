@@ -21,7 +21,7 @@ explanations_table = Table(
     extend_existing=True,
 )
 
-metadata.create_all(bind=engine)
+# metadata.create_all(bind=engine)
 
 
 def save_explanation(

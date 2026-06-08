@@ -4,6 +4,7 @@ from json import JSONDecodeError
 from google import genai
 
 from app.config import settings
+from app.privacy.masking import mask_sensitive_text
 from app.research.schemas import RawResearchResult
 
 
@@ -99,7 +100,10 @@ def summarize_research_with_gemini(
         )
 
     client = genai.Client(api_key=settings.gemini_api_key)
-    prompt = _build_research_summary_prompt(query, subject_type, results)
+
+    raw_prompt = _build_research_summary_prompt(query, subject_type, results)
+    prompt_masking_result = mask_sensitive_text(raw_prompt)
+    prompt = prompt_masking_result.masked_text
 
     try:
         response = client.models.generate_content(
@@ -116,21 +120,40 @@ def summarize_research_with_gemini(
     if not response_text:
         raise RuntimeError("Gemini returned an empty research summary response.")
 
-    cleaned_text = _clean_json_text(response_text)
+    response_masking_result = mask_sensitive_text(response_text)
+    safe_response_text = response_masking_result.masked_text
+    cleaned_text = _clean_json_text(safe_response_text)
 
     try:
         parsed = json.loads(cleaned_text)
     except JSONDecodeError as exc:
-        raise RuntimeError(f"Gemini returned invalid research JSON: {response_text}") from exc
+        raise RuntimeError(
+            f"Gemini returned invalid research JSON: {safe_response_text}"
+        ) from exc
 
     required_keys = {"summary", "key_points", "risk_note"}
     missing_keys = required_keys - set(parsed.keys())
 
     if missing_keys:
-        raise RuntimeError(f"Gemini research summary missing keys: {sorted(missing_keys)}")
+        raise RuntimeError(
+            f"Gemini research summary missing keys: {sorted(missing_keys)}"
+        )
 
     if not isinstance(parsed["key_points"], list):
         raise RuntimeError("Gemini research key_points must be a list.")
+
+    masked_fields = list(prompt_masking_result.masked_fields)
+    for field in response_masking_result.masked_fields:
+        if field not in masked_fields:
+            masked_fields.append(field)
+
+    parsed["privacy"] = {
+        "llm_payload_masked": prompt_masking_result.mask_count > 0,
+        "llm_response_masked": response_masking_result.mask_count > 0,
+        "masked_fields": masked_fields,
+        "prompt_mask_count": prompt_masking_result.mask_count,
+        "response_mask_count": response_masking_result.mask_count,
+    }
 
     return parsed
 

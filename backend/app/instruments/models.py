@@ -1,9 +1,6 @@
 from sqlalchemy import Column, Integer, String
 
-from app.db import engine
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from app.models_base import Base
 
 
 class Instrument(Base):
@@ -19,4 +16,3 @@ class Instrument(Base):
     amfi_scheme_code = Column(String, nullable=True)
 
 
-Base.metadata.create_all(bind=engine)

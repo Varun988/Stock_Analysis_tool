@@ -1,10 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, Date, DateTime, Float, Integer, String
-from app.db import engine
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from app.models_base import Base
 
 
 class PortfolioHolding(Base):
@@ -26,4 +23,3 @@ class PortfolioHolding(Base):
     current_value = Column(Float)
 
 
-Base.metadata.create_all(bind=engine)

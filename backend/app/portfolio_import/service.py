@@ -34,7 +34,7 @@ from app.recommendation_scoring.explanation_service import (
     explain_backend_recommendation_with_ai,
 )
 from app.recommendation_scoring.service import generate_backend_recommendation_score
-
+from app.instrument_master.service import get_instrument_master_by_isin
 
 _UPLOAD_STORE: dict[str, PortfolioUploadResponse] = {}
 
@@ -98,28 +98,42 @@ def _generate_profile_aware_recommendation(
 
     return backend_recommendation, recommendation_explanation
 
-
 def _resolve_holdings_identity_cost_aware(valid_holdings: list[dict]) -> list[dict]:
-    """Resolve holdings using low-cost providers first.
+    """Resolve holdings using low-cost/local providers first.
 
     Resolution order:
-    1. IndianAPI + versioned cache
-    2. Existing SerpAPI + Gemini resolver only for unresolved holdings
+    1. Local instrument_master by ISIN
+    2. IndianAPI + versioned cache
+    3. Existing SerpAPI + Gemini resolver only for unresolved holdings
 
     This reduces Gemini/SerpAPI calls while keeping the existing fallback behavior.
     """
-    indianapi_resolved_holdings: list[dict] = []
+    low_cost_resolved_holdings: list[dict] = []
     holdings_for_ai_resolution: list[dict] = []
 
     for holding in valid_holdings:
+        # 1. First try local verified instrument_master using ISIN.
+        # This is the most dependable and lowest-cost path.
+        master_result = get_instrument_master_by_isin(holding.get("isin"))
+
+        if master_result and master_result.get("resolved"):
+            low_cost_resolved_holdings.append(
+                {
+                    **holding,
+                    **master_result,
+                }
+            )
+            continue
+
+        # 2. If local master does not know this ISIN, try IndianAPI.
         indianapi_result = resolve_holding_with_indianapi(holding)
 
         if indianapi_result and indianapi_result.get("resolved"):
-            indianapi_resolved_holdings.append(indianapi_result)
+            low_cost_resolved_holdings.append(indianapi_result)
             continue
 
-        # Keep IndianAPI warning info if available, but let the existing
-        # SerpAPI + Gemini resolver try next.
+        # 3. If IndianAPI attempted but failed, keep its warning details.
+        # Existing SerpAPI + Gemini resolver can still try next.
         if indianapi_result:
             holding = {
                 **holding,
@@ -134,13 +148,13 @@ def _resolve_holdings_identity_cost_aware(valid_holdings: list[dict]) -> list[di
 
     ai_resolved_holdings: list[dict] = []
 
+    # 4. Existing Gemini/SerpAPI resolver is called only for unresolved holdings.
     if holdings_for_ai_resolution:
         ai_resolved_holdings = resolve_holdings_identity_with_ai(
             holdings_for_ai_resolution
         )
 
-    return indianapi_resolved_holdings + ai_resolved_holdings
-
+    return low_cost_resolved_holdings + ai_resolved_holdings
 
 def _run_pre_import_analysis(resolved_valid_holdings: list[dict]) -> dict:
     """Run all analysis modules used by the upload extraction preview."""
@@ -326,7 +340,7 @@ async def extract_uploaded_portfolio_file(
                 )
 
         warnings.append(
-            "IndianAPI/cache-first instrument resolution was used before Gemini fallback."
+            "Local instrument_master was used first for ISIN-based resolution before provider/AI fallback"
         )
 
         return {

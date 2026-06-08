@@ -15,6 +15,7 @@ from app.portfolio_import.serpapi_search_resolver import (
     extract_search_result_items,
     fetch_serpapi_google_results,
 )
+from app.privacy.masking import mask_sensitive_text
 
 
 CACHE_FILE_PATH = Path(__file__).with_name("candidate_resolution_cache.json")
@@ -300,7 +301,10 @@ def _call_gemini_for_candidate_resolution(
         raise RuntimeError("Gemini API key is not configured. Set GEMINI_API_KEY in backend .env.")
 
     client = genai.Client(api_key=settings.gemini_api_key)
-    prompt = _build_candidate_prompt(candidate=candidate, search_context=search_context)
+
+    raw_prompt = _build_candidate_prompt(candidate=candidate, search_context=search_context)
+    prompt_masking_result = mask_sensitive_text(raw_prompt)
+    prompt = prompt_masking_result.masked_text
     response = None
 
     try:
@@ -323,16 +327,36 @@ def _call_gemini_for_candidate_resolution(
     if not response_text:
         raise RuntimeError("Gemini returned empty candidate resolution response.")
 
-    cleaned_text = _clean_json_text(response_text)
+    response_masking_result = mask_sensitive_text(response_text)
+    safe_response_text = response_masking_result.masked_text
+
+    cleaned_text = _clean_json_text(safe_response_text)
     try:
         parsed = json.loads(cleaned_text)
     except JSONDecodeError as exc:
-        raise RuntimeError(f"Gemini returned invalid JSON for candidate resolution: {response_text}") from exc
+        raise RuntimeError(f"Gemini returned invalid JSON for candidate resolution: {safe_response_text}") from exc
 
     try:
-        return CandidateResolutionResult.model_validate(parsed)
+        resolution = CandidateResolutionResult.model_validate(parsed)
     except ValidationError as exc:
         raise RuntimeError(f"Gemini candidate resolution schema validation failed: {exc}") from exc
+
+    privacy_warnings: list[str] = []
+    if prompt_masking_result.mask_count > 0:
+        privacy_warnings.append(
+            "Sensitive metadata was masked before AI candidate resolution: "
+            + ", ".join(prompt_masking_result.masked_fields)
+        )
+    if response_masking_result.mask_count > 0:
+        privacy_warnings.append(
+            "Sensitive metadata was masked from AI candidate resolution response: "
+            + ", ".join(response_masking_result.masked_fields)
+        )
+
+    if privacy_warnings:
+        resolution.warnings = list(resolution.warnings) + privacy_warnings
+
+    return resolution
 
 
 def _normalize_yfinance_symbol(symbol: str | None, exchange: str | None) -> str | None:
