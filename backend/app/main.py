@@ -20,7 +20,16 @@ from app.common.logging_config import setup_logging
 from app.common.request_logging import RequestLoggingMiddleware
 from app.common.internal_api_key import InternalApiKeyMiddleware
 import app.cache.models  # noqa: F401 - Ensure cache models are registered with SQLAlchemy
+import app.instrument_master.models  # noqa: F401
+import app.market_data_history.models  # noqa: F401
+from app.candidate_discovery.routes import router as candidate_resolution_router
+
+
+from app.admin_debug.routes import router as admin_debug_router
+
 setup_logging()
+
+
 
 
 
@@ -45,11 +54,12 @@ app.include_router(
     profile_router,
     prefix=settings.api_v1_prefix,
 )
-
+app.include_router(candidate_resolution_router)
 app.include_router(
     portfolio_upload_router,
     prefix=settings.api_v1_prefix,
 )
+app.include_router(admin_debug_router)
 
 app.include_router(
     portfolio_router,

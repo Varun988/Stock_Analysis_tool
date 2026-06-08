@@ -1,0 +1,61 @@
+{
+  "NIFTY_50": {
+    "benchmark_name": "NIFTY 50",
+    "benchmark_symbol": "^NSEI",
+    "benchmark_provider": "YFINANCE",
+    "local_benchmark_key": "BENCHMARK_NIFTY_50",
+    "proxy_used": false,
+    "proxy_note": null
+  },
+  "NIFTY_NV20": {
+    "benchmark_name": "NIFTY 50 proxy for NIFTY50 Value 20",
+    "benchmark_symbol": "^NSEI",
+    "benchmark_provider": "YFINANCE",
+    "local_benchmark_key": "BENCHMARK_NIFTY_NV20",
+    "fallback_local_benchmark_key": "BENCHMARK_NIFTY_50",
+    "proxy_used": true,
+    "proxy_note": "NIFTY50 Value 20 exact historical index source is not integrated yet; NIFTY 50 is used as a conservative broad-market proxy."
+  },
+  "NIFTY_NEXT_50": {
+    "benchmark_name": "NIFTY Next 50",
+    "benchmark_symbol": "^NSMIDCP",
+    "benchmark_provider": "YFINANCE",
+    "local_benchmark_key": "BENCHMARK_NIFTY_NEXT_50",
+    "proxy_used": false,
+    "proxy_note": null
+  },
+  "GOLD": {
+    "benchmark_name": "Gold proxy",
+    "benchmark_symbol": "GOLDBEES.NS",
+    "benchmark_provider": "YFINANCE",
+    "local_benchmark_key": "BENCHMARK_GOLD",
+    "proxy_used": true,
+    "proxy_note": "Gold ETF proxy is used until a dedicated gold benchmark source is integrated."
+  },
+  "BROAD_EQUITY": {
+    "benchmark_name": "Broad equity proxy",
+    "benchmark_symbol": "^NSEI",
+    "benchmark_provider": "YFINANCE",
+    "local_benchmark_key": "BENCHMARK_BROAD_EQUITY",
+    "fallback_local_benchmark_key": "BENCHMARK_NIFTY_50",
+    "proxy_used": true,
+    "proxy_note": "NIFTY 50 is used as broad equity proxy until broader index data is integrated."
+  },
+  "LARGE_MID_CAP": {
+    "benchmark_name": "Large & Mid Cap proxy",
+    "benchmark_symbol": "^NSEI",
+    "benchmark_provider": "YFINANCE",
+    "local_benchmark_key": "BENCHMARK_LARGE_MID_CAP",
+    "fallback_local_benchmark_key": "BENCHMARK_NIFTY_50",
+    "proxy_used": true,
+    "proxy_note": "NIFTY 50 is used as a temporary proxy until exact large & mid cap benchmark data is integrated."
+  },
+  "DEBT_OR_LIQUID": {
+    "benchmark_name": "Debt/liquid proxy",
+    "benchmark_symbol": null,
+    "benchmark_provider": "LOCAL_ONLY",
+    "local_benchmark_key": "BENCHMARK_DEBT_OR_LIQUID",
+    "proxy_used": true,
+    "proxy_note": "Debt/liquid benchmark source is not integrated yet."
+  }
+}

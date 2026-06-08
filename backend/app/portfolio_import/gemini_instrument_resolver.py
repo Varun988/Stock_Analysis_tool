@@ -12,6 +12,7 @@ from app.config import settings
 from app.portfolio_import.serpapi_search_resolver import (
     search_instrument_context_with_serpapi,
 )
+from app.privacy.masking import mask_sensitive_text
 
 
 TRUSTED_SOURCE_HINTS = [
@@ -248,7 +249,10 @@ def _call_gemini_for_resolution(
         )
 
     client = genai.Client(api_key=settings.gemini_api_key)
-    prompt = _build_resolution_prompt(holding=holding, search_context=search_context)
+
+    raw_prompt = _build_resolution_prompt(holding=holding, search_context=search_context)
+    prompt_masking_result = mask_sensitive_text(raw_prompt)
+    prompt = prompt_masking_result.masked_text
     response = None
 
     try:
@@ -273,18 +277,38 @@ def _call_gemini_for_resolution(
     if not response_text:
         raise RuntimeError("Gemini returned an empty instrument resolution response.")
 
-    cleaned_text = _clean_json_text(response_text)
+    response_masking_result = mask_sensitive_text(response_text)
+    safe_response_text = response_masking_result.masked_text
+
+    cleaned_text = _clean_json_text(safe_response_text)
     try:
         parsed = json.loads(cleaned_text)
     except JSONDecodeError as exc:
         raise RuntimeError(
-            f"Gemini returned invalid JSON for instrument resolution: {response_text}"
+            f"Gemini returned invalid JSON for instrument resolution: {safe_response_text}"
         ) from exc
 
     try:
-        return InstrumentResolution.model_validate(parsed)
+        resolution = InstrumentResolution.model_validate(parsed)
     except ValidationError as exc:
         raise RuntimeError(f"Gemini instrument resolution schema validation failed: {exc}") from exc
+
+    privacy_warnings: list[str] = []
+    if prompt_masking_result.mask_count > 0:
+        privacy_warnings.append(
+            "Sensitive metadata was masked before AI instrument resolution: "
+            + ", ".join(prompt_masking_result.masked_fields)
+        )
+    if response_masking_result.mask_count > 0:
+        privacy_warnings.append(
+            "Sensitive metadata was masked from AI instrument resolution response: "
+            + ", ".join(response_masking_result.masked_fields)
+        )
+
+    if privacy_warnings:
+        resolution.warnings = list(resolution.warnings) + privacy_warnings
+
+    return resolution
 
 
 def _has_trusted_evidence(resolution: InstrumentResolution) -> bool:

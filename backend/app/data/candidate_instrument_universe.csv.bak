@@ -1,0 +1,6 @@
+candidate_category,isin,instrument_name,instrument_type,nse_symbol,bse_symbol,yfinance_symbol,benchmark,exposure_category,market_data_provider,fallback_market_data_provider,verification_status,notes
+NEXT_50_INDEX,,Nifty Next 50 ETF / Index Fund candidate placeholder,ETF_OR_INDEX_FUND,,,,NIFTY_NEXT_50,NEXT_50_INDEX,NSE_MCP,YFINANCE,NEEDS_VERIFICATION,Placeholder until exact ETF/index fund instruments are manually verified.
+GOLD_OR_HEDGE,,Gold ETF candidate placeholder,ETF,,,,GOLD,GOLD,NSE_MCP,YFINANCE,NEEDS_VERIFICATION,Placeholder until exact Gold ETF instruments are manually verified.
+FLEXI_CAP,,Flexi-cap mutual fund candidate placeholder,MUTUAL_FUND,,,,BROAD_EQUITY,DIVERSIFIED_EQUITY,AMFI,NONE,NEEDS_VERIFICATION,Placeholder until exact mutual fund schemes are manually verified.
+LARGE_MID_CAP,,Large & mid-cap mutual fund candidate placeholder,MUTUAL_FUND,,,,LARGE_MID_CAP,MID_CAP_INDEX,AMFI,NONE,NEEDS_VERIFICATION,Placeholder until exact mutual fund schemes are manually verified.
+DEBT_OR_LIQUID,,Debt/liquid fund candidate placeholder,MUTUAL_FUND,,,,DEBT_OR_LIQUID,DEBT_OR_LIQUID,AMFI,NONE,NEEDS_VERIFICATION,Placeholder until exact mutual fund schemes are manually verified.

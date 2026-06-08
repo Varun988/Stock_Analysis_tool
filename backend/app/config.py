@@ -5,15 +5,21 @@ class Settings(BaseSettings):
     app_name: str = "Stock Analysis Tool"
     environment: str = "development"
     api_v1_prefix: str = "/api/v1"
-
+    enable_yfinance_fallback: bool = False
+    enable_indianapi_fallback: bool = False
+    enable_serpapi_candidate_discovery: bool = False
+    enable_gemini_extraction: bool = True
+    enable_gemini_explanation: bool = True
 
     log_level: str = "INFO"
     database_url: str = "postgresql://postgres:postgres@localhost:5432/stock_tool"
-
+    enable_yfinance_fallback: bool = False
     # Internal API protection
     internal_api_key: str | None = None
 
-
+    # Admin debug controls
+    enable_admin_debug: bool = False
+    admin_debug_api_key: str | None = None
     # IndianAPI provider
     indianapi_base_url: str = "https://stock.indianapi.in"
     indianapi_api_key: str | None = None

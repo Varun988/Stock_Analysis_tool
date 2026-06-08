@@ -2,57 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.historical_analysis.service import analyze_symbol_history
+import pandas as pd
+
+from app.benchmark_analysis.benchmark_mapping import get_benchmark_config
+from app.historical_analysis.service import (
+    _build_symbol_history_metrics,
+    analyze_symbol_history,
+)
+from app.market_data_history.service import get_history_rows_for_lookback
 
 
-# Phase 6B benchmark mapping.
-# Keep this deliberately backend-controlled and transparent.
-# These are Yahoo Finance index symbols / proxy symbols used only for comparison.
-# If a benchmark is missing or provider fails, benchmark comparison is skipped safely.
-BENCHMARK_SYMBOL_MAP = {
-    "NIFTY_50": {
-        "benchmark_symbol": "^NSEI",
-        "benchmark_name": "NIFTY 50",
-        "provider": "YFINANCE",
-    },
-    "NIFTY_BANK": {
-        "benchmark_symbol": "^NSEBANK",
-        "benchmark_name": "NIFTY BANK",
-        "provider": "YFINANCE",
-    },
-    # Yahoo Finance may not always expose every Indian strategy index reliably.
-    # For NIFTY_NV20, we keep a conservative comparison proxy to NIFTY 50 until
-    # a more reliable NIFTY50 Value 20 benchmark source is integrated.
-    "NIFTY_NV20": {
-        "benchmark_symbol": "^NSEI",
-        "benchmark_name": "NIFTY 50 proxy for NIFTY50 Value 20",
-        "provider": "YFINANCE",
-        "proxy_used": True,
-        "proxy_note": "NIFTY50 Value 20 exact historical index source is not integrated yet; NIFTY 50 is used as a conservative broad-market proxy.",
-    },
-    "NIFTY_NEXT_50": {
-        "benchmark_symbol": None,
-        "benchmark_name": "NIFTY NEXT 50",
-        "provider": None,
-        "proxy_used": False,
-        "proxy_note": "Benchmark symbol is not configured yet.",
-    },
-    "NIFTY_MIDCAP": {
-        "benchmark_symbol": None,
-        "benchmark_name": "NIFTY MIDCAP",
-        "provider": None,
-        "proxy_used": False,
-        "proxy_note": "Benchmark symbol is not configured yet.",
-    },
-    "NIFTY_SMALLCAP": {
-        "benchmark_symbol": None,
-        "benchmark_name": "NIFTY SMALLCAP",
-        "provider": None,
-        "proxy_used": False,
-        "proxy_note": "Benchmark symbol is not configured yet.",
-    },
-}
-
+BENCHMARK_HISTORY_LOOKBACK_YEARS = 5
 
 COMPARISON_PERIODS = [
     ("1m", "trailing_returns"),
@@ -138,8 +98,12 @@ def _compare_risk_metrics(
     instrument_metrics: dict[str, Any],
     benchmark_metrics: dict[str, Any],
 ) -> dict[str, Any]:
-    instrument_volatility = _safe_number(instrument_metrics.get("volatility_annualized_percent"))
-    benchmark_volatility = _safe_number(benchmark_metrics.get("volatility_annualized_percent"))
+    instrument_volatility = _safe_number(
+        instrument_metrics.get("volatility_annualized_percent")
+    )
+    benchmark_volatility = _safe_number(
+        benchmark_metrics.get("volatility_annualized_percent")
+    )
     instrument_drawdown = _safe_number(instrument_metrics.get("max_drawdown_percent"))
     benchmark_drawdown = _safe_number(benchmark_metrics.get("max_drawdown_percent"))
 
@@ -174,7 +138,9 @@ def _score_benchmark_comparison(
 ) -> dict[str, Any]:
     comparable_periods = period_comparison_summary.get("comparable_periods", 0)
     outperformed_periods = period_comparison_summary.get("outperformed_periods", 0)
-    average_excess_return = period_comparison_summary.get("average_excess_return_percent")
+    average_excess_return = period_comparison_summary.get(
+        "average_excess_return_percent"
+    )
 
     if comparable_periods <= 0:
         return {
@@ -207,7 +173,101 @@ def _score_benchmark_comparison(
 def _get_benchmark_config(benchmark: str | None) -> dict[str, Any] | None:
     if not benchmark:
         return None
-    return BENCHMARK_SYMBOL_MAP.get(str(benchmark).upper())
+
+    return get_benchmark_config(str(benchmark).upper())
+
+
+def _extract_price_series_from_local_benchmark_rows(
+    history_rows: list[dict[str, Any]],
+) -> pd.Series:
+    if not history_rows:
+        return pd.Series(dtype="float64")
+
+    series_items = []
+
+    for row in history_rows:
+        row_date = row.get("data_date")
+        close_value = row.get("close_price")
+        nav_value = row.get("nav")
+
+        price_value = close_value if close_value is not None else nav_value
+        safe_price = _safe_number(price_value)
+
+        if row_date is None or safe_price is None:
+            continue
+
+        timestamp = pd.Timestamp(row_date)
+        series_items.append((timestamp, safe_price))
+
+    if not series_items:
+        return pd.Series(dtype="float64")
+
+    prices = pd.Series(
+        data=[item[1] for item in series_items],
+        index=[item[0] for item in series_items],
+        dtype="float64",
+    )
+
+    prices = prices.dropna().sort_index()
+    prices = prices[~prices.index.duplicated(keep="last")]
+
+    return prices
+
+
+def _analyze_local_benchmark_history(
+    benchmark_config: dict[str, Any],
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Try local benchmark history from market_data_history.
+
+    Order:
+    1. local_benchmark_key
+    2. fallback_local_benchmark_key, if configured
+    """
+    errors: list[str] = []
+
+    candidate_keys = []
+
+    local_key = benchmark_config.get("local_benchmark_key")
+    if local_key:
+        candidate_keys.append(str(local_key))
+
+    fallback_key = benchmark_config.get("fallback_local_benchmark_key")
+    if fallback_key:
+        candidate_keys.append(str(fallback_key))
+
+    for local_benchmark_key in candidate_keys:
+        history_rows = get_history_rows_for_lookback(
+            isin=local_benchmark_key,
+            lookback_years=BENCHMARK_HISTORY_LOOKBACK_YEARS,
+            provider=None,
+        )
+
+        prices = _extract_price_series_from_local_benchmark_rows(history_rows)
+
+        if prices.empty:
+            errors.append(
+                f"No local benchmark history found for {local_benchmark_key}."
+            )
+            continue
+
+        symbol = benchmark_config.get("benchmark_symbol") or local_benchmark_key
+
+        benchmark_metrics = _build_symbol_history_metrics(
+            symbol=symbol,
+            prices=prices,
+            provider="LOCAL_MARKET_DATA_HISTORY",
+            successful_period=(
+                f"local_market_data_history:{local_benchmark_key}:"
+                f"{BENCHMARK_HISTORY_LOOKBACK_YEARS}y"
+            ),
+            provider_errors=errors,
+        )
+
+        benchmark_metrics["local_benchmark_key"] = local_benchmark_key
+
+        return benchmark_metrics, errors
+
+    return None, errors
 
 
 def compare_holding_with_benchmark(holding_result: dict[str, Any]) -> dict[str, Any]:
@@ -229,6 +289,7 @@ def compare_holding_with_benchmark(holding_result: dict[str, Any]) -> dict[str, 
         }
 
     benchmark_config = _get_benchmark_config(benchmark)
+
     if not benchmark_config:
         return {
             **base_response,
@@ -237,33 +298,54 @@ def compare_holding_with_benchmark(holding_result: dict[str, Any]) -> dict[str, 
         }
 
     benchmark_symbol = benchmark_config.get("benchmark_symbol")
-    if not benchmark_symbol:
-        return {
-            **base_response,
-            "benchmark_comparison_available": False,
-            "benchmark_name": benchmark_config.get("benchmark_name"),
-            "message": benchmark_config.get("proxy_note") or "Benchmark symbol is not configured.",
-        }
+    local_benchmark_key = benchmark_config.get("local_benchmark_key")
 
-    benchmark_metrics = analyze_symbol_history(symbol=benchmark_symbol)
-    if not benchmark_metrics.get("historical_analysis_available"):
-        return {
-            **base_response,
-            "benchmark_comparison_available": False,
-            "benchmark_name": benchmark_config.get("benchmark_name"),
-            "benchmark_symbol": benchmark_symbol,
-            "message": "Benchmark historical data could not be fetched.",
-            "benchmark_provider_errors": benchmark_metrics.get("provider_errors"),
-        }
+    benchmark_metrics, local_benchmark_errors = _analyze_local_benchmark_history(
+        benchmark_config
+    )
+
+    benchmark_data_source = "LOCAL_MARKET_DATA_HISTORY"
+
+    if benchmark_metrics is None:
+        if not benchmark_symbol:
+            return {
+                **base_response,
+                "benchmark_comparison_available": False,
+                "benchmark_name": benchmark_config.get("benchmark_name"),
+                "benchmark_symbol": benchmark_symbol,
+                "local_benchmark_key": local_benchmark_key,
+                "message": benchmark_config.get("proxy_note")
+                or "Benchmark symbol is not configured and local benchmark history is unavailable.",
+                "benchmark_provider_errors": local_benchmark_errors,
+            }
+
+        benchmark_metrics = analyze_symbol_history(symbol=benchmark_symbol)
+        benchmark_data_source = benchmark_config.get("benchmark_provider")
+
+        if not benchmark_metrics.get("historical_analysis_available"):
+            return {
+                **base_response,
+                "benchmark_comparison_available": False,
+                "benchmark_name": benchmark_config.get("benchmark_name"),
+                "benchmark_symbol": benchmark_symbol,
+                "local_benchmark_key": local_benchmark_key,
+                "message": "Benchmark historical data could not be fetched.",
+                "benchmark_provider_errors": (
+                    local_benchmark_errors
+                    + (benchmark_metrics.get("provider_errors") or [])
+                ),
+            }
 
     period_comparison_summary = _compare_periods(
         instrument_metrics=holding_result,
         benchmark_metrics=benchmark_metrics,
     )
+
     risk_comparison = _compare_risk_metrics(
         instrument_metrics=holding_result,
         benchmark_metrics=benchmark_metrics,
     )
+
     benchmark_score = _score_benchmark_comparison(
         period_comparison_summary=period_comparison_summary,
         risk_comparison=risk_comparison,
@@ -274,7 +356,11 @@ def compare_holding_with_benchmark(holding_result: dict[str, Any]) -> dict[str, 
         "benchmark_comparison_available": True,
         "benchmark_name": benchmark_config.get("benchmark_name"),
         "benchmark_symbol": benchmark_symbol,
-        "benchmark_provider": benchmark_config.get("provider"),
+        "local_benchmark_key": benchmark_metrics.get(
+            "local_benchmark_key",
+            local_benchmark_key,
+        ),
+        "benchmark_provider": benchmark_data_source,
         "proxy_used": bool(benchmark_config.get("proxy_used")),
         "proxy_note": benchmark_config.get("proxy_note"),
         **period_comparison_summary,
@@ -283,6 +369,7 @@ def compare_holding_with_benchmark(holding_result: dict[str, Any]) -> dict[str, 
         "benchmark_data_quality": benchmark_metrics.get("data_quality"),
         "benchmark_data_points": benchmark_metrics.get("data_points"),
         "benchmark_successful_period": benchmark_metrics.get("successful_period"),
+        "benchmark_provider_errors": benchmark_metrics.get("provider_errors"),
     }
 
 

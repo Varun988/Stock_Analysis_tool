@@ -8,13 +8,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
-
-from app.db import engine
-
-Base = declarative_base()
-
+from app.models_base import Base
 
 class InstrumentResolutionCache(Base):
     __tablename__ = "instrument_resolution_cache"
@@ -138,4 +133,3 @@ class AIResponseCache(Base):
     )
 
 
-Base.metadata.create_all(bind=engine)

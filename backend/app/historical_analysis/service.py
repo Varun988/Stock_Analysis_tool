@@ -1,20 +1,25 @@
 from __future__ import annotations
 
+import json
 import math
 from datetime import date
 from typing import Any
-
-import pandas as pd
-import yfinance as yf
-import json
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+
+import pandas as pd
+import yfinance as yf
+
+from app.config import settings
+from app.market_data_history.service import get_history_rows_for_lookback
+
 
 TRADING_DAYS_PER_YEAR = 252
 MIN_DATA_POINTS_FOR_BASIC_ANALYSIS = 30
 MIN_DATA_POINTS_FOR_STRONG_ANALYSIS = 200
 YFINANCE_PERIOD_FALLBACKS = ["5y", "max", "1y", "6mo"]
+LOCAL_HISTORY_LOOKBACK_YEARS = 5
 
 
 def _safe_float(value: Any) -> float | None:
@@ -62,6 +67,84 @@ def _extract_price_series(history_df: pd.DataFrame) -> pd.Series:
 
     return prices
 
+
+def _extract_price_series_from_local_history_rows(
+    history_rows: list[dict[str, Any]],
+) -> pd.Series:
+    if not history_rows:
+        return pd.Series(dtype="float64")
+
+    series_items = []
+
+    for row in history_rows:
+        row_date = row.get("data_date")
+        close_value = row.get("close_price")
+        nav_value = row.get("nav")
+
+        price_value = close_value if close_value is not None else nav_value
+        safe_price = _safe_float(price_value)
+
+        if row_date is None or safe_price is None:
+            continue
+
+        timestamp = pd.Timestamp(row_date)
+        series_items.append((timestamp, safe_price))
+
+    if not series_items:
+        return pd.Series(dtype="float64")
+
+    prices = pd.Series(
+        data=[item[1] for item in series_items],
+        index=[item[0] for item in series_items],
+        dtype="float64",
+    )
+
+    prices = prices.dropna().sort_index()
+    prices = prices[~prices.index.duplicated(keep="last")]
+
+    return prices
+
+
+def _fetch_local_market_data_price_series(
+    isin: str | None,
+) -> tuple[pd.Series, str | None, list[str]]:
+    if not isin:
+        return (
+            pd.Series(dtype="float64"),
+            None,
+            ["ISIN missing; local market_data_history lookup skipped."],
+        )
+
+    local_errors: list[str] = []
+    provider_priority = ["NSE_MCP", "YFINANCE"]
+
+    for provider in provider_priority:
+        history_rows = get_history_rows_for_lookback(
+            isin=isin,
+            lookback_years=LOCAL_HISTORY_LOOKBACK_YEARS,
+            provider=provider,
+        )
+
+        prices = _extract_price_series_from_local_history_rows(history_rows)
+
+        if not prices.empty:
+            return (
+                prices,
+                f"local_market_data_history:{provider}:{LOCAL_HISTORY_LOOKBACK_YEARS}y",
+                local_errors,
+            )
+
+        local_errors.append(
+            f"No local market_data_history rows found for ISIN={isin}, provider={provider}."
+        )
+
+    return (
+        pd.Series(dtype="float64"),
+        None,
+        local_errors,
+    )
+
+
 def _fetch_yfinance_price_series(symbol: str) -> tuple[pd.Series, str | None, list[str]]:
     errors: list[str] = []
 
@@ -107,7 +190,7 @@ def _fetch_yfinance_price_series(symbol: str) -> tuple[pd.Series, str | None, li
 
     return pd.Series(dtype="float64"), None, errors
 
-    
+
 def _fetch_yahoo_chart_price_series(
     symbol: str,
     range_value: str = "5y",
@@ -157,6 +240,7 @@ def _fetch_yahoo_chart_price_series(
 
     return prices
 
+
 def _fetch_yfinance_ticker_price_series(
     symbol: str,
     period: str,
@@ -172,7 +256,11 @@ def _fetch_yfinance_ticker_price_series(
     except Exception:
         return pd.Series(dtype="float64")
 
-def _value_on_or_before(prices: pd.Series, target_timestamp: pd.Timestamp) -> tuple[float | None, pd.Timestamp | None]:
+
+def _value_on_or_before(
+    prices: pd.Series,
+    target_timestamp: pd.Timestamp,
+) -> tuple[float | None, pd.Timestamp | None]:
     if prices.empty:
         return None, None
 
@@ -183,7 +271,10 @@ def _value_on_or_before(prices: pd.Series, target_timestamp: pd.Timestamp) -> tu
     return _safe_float(eligible_prices.iloc[-1]), eligible_prices.index[-1]
 
 
-def _calculate_return_percent(start_value: float | None, end_value: float | None) -> float | None:
+def _calculate_return_percent(
+    start_value: float | None,
+    end_value: float | None,
+) -> float | None:
     if start_value is None or end_value is None:
         return None
     if start_value <= 0:
@@ -301,7 +392,8 @@ def _score_historical_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
     historical_performance_score = None
     if return_points:
         historical_performance_score = round(
-            sum(score * weight for score, weight in return_points) / sum(weight for _, weight in return_points)
+            sum(score * weight for score, weight in return_points)
+            / sum(weight for _, weight in return_points)
         )
 
     downside_risk_score = None
@@ -322,7 +414,11 @@ def _score_historical_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
         for score in [historical_performance_score, downside_risk_score, consistency_score]
         if score is not None
     ]
-    overall_historical_score = round(sum(available_scores) / len(available_scores)) if available_scores else None
+    overall_historical_score = (
+        round(sum(available_scores) / len(available_scores))
+        if available_scores
+        else None
+    )
 
     return {
         "historical_performance_score": historical_performance_score,
@@ -333,27 +429,39 @@ def _score_historical_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def analyze_symbol_history(symbol: str) -> dict[str, Any]:
-    prices, successful_period, provider_errors = _fetch_yfinance_price_series(symbol=symbol)
-
+def _build_symbol_history_metrics(
+    symbol: str,
+    prices: pd.Series,
+    provider: str,
+    successful_period: str | None,
+    provider_errors: list[str],
+) -> dict[str, Any]:
     if prices.empty:
         return {
             "symbol": symbol,
-            "provider": "YFINANCE",
+            "provider": provider,
             "historical_analysis_available": False,
             "data_quality": "INSUFFICIENT",
             "data_points": 0,
-            "message": "No historical price data returned by provider after fallback periods.",
+            "message": "No historical price data available.",
             "provider_errors": provider_errors,
         }
 
-    first_date = prices.index[0].date().isoformat() if hasattr(prices.index[0], "date") else str(prices.index[0])
-    latest_date = prices.index[-1].date().isoformat() if hasattr(prices.index[-1], "date") else str(prices.index[-1])
+    first_date = (
+        prices.index[0].date().isoformat()
+        if hasattr(prices.index[0], "date")
+        else str(prices.index[0])
+    )
+    latest_date = (
+        prices.index[-1].date().isoformat()
+        if hasattr(prices.index[-1], "date")
+        else str(prices.index[-1])
+    )
     latest_value = _safe_float(prices.iloc[-1])
 
     metrics = {
         "symbol": symbol,
-        "provider": "YFINANCE",
+        "provider": provider,
         "successful_period": successful_period,
         "historical_analysis_available": len(prices) >= MIN_DATA_POINTS_FOR_BASIC_ANALYSIS,
         "data_quality": _data_quality_label(len(prices)),
@@ -381,6 +489,42 @@ def analyze_symbol_history(symbol: str) -> dict[str, Any]:
     return metrics
 
 
+def analyze_symbol_history(symbol: str) -> dict[str, Any]:
+    if not settings.enable_yfinance_fallback:
+        return {
+            "symbol": symbol,
+            "provider": "YFINANCE",
+            "historical_analysis_available": False,
+            "data_quality": "INSUFFICIENT",
+            "data_points": 0,
+            "message": "Live YFinance/Yahoo fallback is disabled.",
+            "provider_errors": [
+                "Live YFinance/Yahoo fallback skipped because ENABLE_YFINANCE_FALLBACK=false."
+            ],
+        }
+
+    prices, successful_period, provider_errors = _fetch_yfinance_price_series(symbol=symbol)
+
+    if prices.empty:
+        return {
+            "symbol": symbol,
+            "provider": "YFINANCE",
+            "historical_analysis_available": False,
+            "data_quality": "INSUFFICIENT",
+            "data_points": 0,
+            "message": "No historical price data returned by provider after fallback periods.",
+            "provider_errors": provider_errors,
+        }
+
+    return _build_symbol_history_metrics(
+        symbol=symbol,
+        prices=prices,
+        provider="YFINANCE",
+        successful_period=successful_period,
+        provider_errors=provider_errors,
+    )
+
+
 def analyze_holding_historical_performance(holding: dict[str, Any]) -> dict[str, Any]:
     yfinance_symbol = holding.get("yfinance_symbol")
     market_data_provider = holding.get("market_data_provider")
@@ -404,20 +548,68 @@ def analyze_holding_historical_performance(holding: dict[str, Any]) -> dict[str,
             "message": "Holding is not confidently resolved. Historical analysis skipped to avoid using wrong market data.",
         }
 
-    if market_data_provider != "YFINANCE" or not yfinance_symbol:
+    if not yfinance_symbol and market_data_provider not in {"NSE_MCP", "YFINANCE"}:
         return {
             **base_response,
             "historical_analysis_available": False,
             "data_quality": "INSUFFICIENT",
-            "message": "Historical analysis currently supports resolved YFINANCE symbols only in this phase.",
+            "message": "Historical analysis requires either local market data or a supported market data symbol.",
         }
 
     try:
+        local_prices, local_successful_period, local_errors = _fetch_local_market_data_price_series(
+            isin=holding.get("isin"),
+        )
+
+        if len(local_prices) >= MIN_DATA_POINTS_FOR_BASIC_ANALYSIS:
+            symbol_metrics = _build_symbol_history_metrics(
+                symbol=yfinance_symbol or holding.get("nse_symbol") or holding.get("isin"),
+                prices=local_prices,
+                provider="LOCAL_MARKET_DATA_HISTORY",
+                successful_period=local_successful_period,
+                provider_errors=local_errors,
+            )
+
+            return {
+                **base_response,
+                **symbol_metrics,
+                "live_provider_fallback_used": False,
+            }
+
+        if not settings.enable_yfinance_fallback:
+            return {
+                **base_response,
+                "historical_analysis_available": False,
+                "data_quality": "INSUFFICIENT",
+                "message": (
+                    "Local historical data is insufficient and live YFinance/Yahoo fallback is disabled."
+                ),
+                "local_history_errors": local_errors,
+                "live_provider_fallback_used": False,
+                "provider_errors": [
+                    "Live YFinance/Yahoo fallback skipped because ENABLE_YFINANCE_FALLBACK=false."
+                ],
+            }
+
+        if not yfinance_symbol:
+            return {
+                **base_response,
+                "historical_analysis_available": False,
+                "data_quality": "INSUFFICIENT",
+                "message": "Live fallback is enabled but yfinance_symbol is missing.",
+                "local_history_errors": local_errors,
+                "live_provider_fallback_used": False,
+            }
+
         symbol_metrics = analyze_symbol_history(symbol=yfinance_symbol)
+
         return {
             **base_response,
             **symbol_metrics,
+            "local_history_errors": local_errors,
+            "live_provider_fallback_used": True,
         }
+
     except Exception as exc:
         return {
             **base_response,
@@ -459,7 +651,8 @@ def analyze_holdings_historical_performance(holdings: list[dict[str, Any]]) -> d
 
     return {
         "analysis_date": date.today().isoformat(),
-        "provider_scope": "YFINANCE_ONLY_PHASE_6A_WITH_PERIOD_FALLBACKS",
+        "provider_scope": "LOCAL_MARKET_DATA_HISTORY_FIRST_THEN_OPTIONAL_YFINANCE_FALLBACK",
+        "yfinance_fallback_enabled": settings.enable_yfinance_fallback,
         "holdings_analyzed_count": len(available_results),
         "holdings_skipped_count": len(skipped_results),
         "average_overall_historical_score": average_overall_historical_score,

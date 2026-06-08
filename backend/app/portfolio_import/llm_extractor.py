@@ -4,7 +4,7 @@ from json import JSONDecodeError
 from google import genai
 
 from app.config import settings
-
+from app.privacy.masking import mask_sensitive_text
 
 MAX_STATEMENT_TEXT_CHARS = 30000
 
@@ -94,7 +94,9 @@ def extract_holdings_with_gemini(statement_text: str) -> dict:
         )
 
     client = genai.Client(api_key=settings.gemini_api_key)
-    prompt = _build_holdings_extraction_prompt(statement_text)
+
+    masking_result = mask_sensitive_text(statement_text)
+    prompt = _build_holdings_extraction_prompt(masking_result.masked_text)
 
     try:
         response = client.models.generate_content(
@@ -128,5 +130,22 @@ def extract_holdings_with_gemini(statement_text: str) -> dict:
 
     if "warnings" not in parsed:
         parsed["warnings"] = []
+
+    if masking_result.mask_count > 0:
+        parsed["warnings"].append(
+            "Sensitive metadata was masked before AI extraction: "
+            + ", ".join(masking_result.masked_fields)
+        )
+        parsed["privacy"] = {
+            "llm_payload_masked": True,
+            "masked_fields": masking_result.masked_fields,
+            "mask_count": masking_result.mask_count,
+        }
+    else:
+        parsed["privacy"] = {
+            "llm_payload_masked": False,
+            "masked_fields": [],
+            "mask_count": 0,
+        }
 
     return parsed
