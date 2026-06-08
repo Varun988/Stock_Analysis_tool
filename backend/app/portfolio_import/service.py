@@ -14,6 +14,9 @@ from app.portfolio_import.enums import UploadStatus
 from app.portfolio_import.gemini_instrument_resolver import (
     resolve_holdings_identity_with_ai,
 )
+from app.portfolio_import.indianapi_instrument_resolver import (
+    resolve_holding_with_indianapi,
+)
 from app.portfolio_import.llm_extractor import extract_holdings_with_gemini
 from app.portfolio_import.parsers.csv_excel_parser import parse_csv_or_excel_file
 from app.portfolio_import.schemas import (
@@ -94,6 +97,49 @@ def _generate_profile_aware_recommendation(
     )
 
     return backend_recommendation, recommendation_explanation
+
+
+def _resolve_holdings_identity_cost_aware(valid_holdings: list[dict]) -> list[dict]:
+    """Resolve holdings using low-cost providers first.
+
+    Resolution order:
+    1. IndianAPI + versioned cache
+    2. Existing SerpAPI + Gemini resolver only for unresolved holdings
+
+    This reduces Gemini/SerpAPI calls while keeping the existing fallback behavior.
+    """
+    indianapi_resolved_holdings: list[dict] = []
+    holdings_for_ai_resolution: list[dict] = []
+
+    for holding in valid_holdings:
+        indianapi_result = resolve_holding_with_indianapi(holding)
+
+        if indianapi_result and indianapi_result.get("resolved"):
+            indianapi_resolved_holdings.append(indianapi_result)
+            continue
+
+        # Keep IndianAPI warning info if available, but let the existing
+        # SerpAPI + Gemini resolver try next.
+        if indianapi_result:
+            holding = {
+                **holding,
+                "indianapi_resolution_attempt": {
+                    "match_method": indianapi_result.get("match_method"),
+                    "match_confidence": indianapi_result.get("match_confidence"),
+                    "warnings": indianapi_result.get("warnings", []),
+                },
+            }
+
+        holdings_for_ai_resolution.append(holding)
+
+    ai_resolved_holdings: list[dict] = []
+
+    if holdings_for_ai_resolution:
+        ai_resolved_holdings = resolve_holdings_identity_with_ai(
+            holdings_for_ai_resolution
+        )
+
+    return indianapi_resolved_holdings + ai_resolved_holdings
 
 
 def _run_pre_import_analysis(resolved_valid_holdings: list[dict]) -> dict:
@@ -254,7 +300,7 @@ async def extract_uploaded_portfolio_file(
             parsed_result["holdings"]
         )
 
-        resolved_valid_holdings = resolve_holdings_identity_with_ai(
+        resolved_valid_holdings = _resolve_holdings_identity_cost_aware(
             validation_result["valid_holdings"]
         )
 
@@ -278,6 +324,10 @@ async def extract_uploaded_portfolio_file(
                 warnings.append(
                     "Statement unrealised P&L does not match extracted holdings total."
                 )
+
+        warnings.append(
+            "IndianAPI/cache-first instrument resolution was used before Gemini fallback."
+        )
 
         return {
             "file_name": parsed_result["file_name"],
@@ -310,7 +360,7 @@ async def extract_uploaded_portfolio_file(
         llm_result["holdings"]
     )
 
-    resolved_valid_holdings = resolve_holdings_identity_with_ai(
+    resolved_valid_holdings = _resolve_holdings_identity_cost_aware(
         validation_result["valid_holdings"]
     )
 
@@ -331,7 +381,10 @@ async def extract_uploaded_portfolio_file(
         "external_candidate_discovery": analysis_result["external_candidate_discovery"],
         "backend_recommendation": analysis_result["backend_recommendation"],
         "recommendation_explanation": analysis_result["recommendation_explanation"],
-        "warnings": llm_result.get("warnings", []),
+        "warnings": llm_result.get("warnings", [])
+        + [
+            "IndianAPI/cache-first instrument resolution was used before Gemini fallback."
+        ],
     }
 
 
