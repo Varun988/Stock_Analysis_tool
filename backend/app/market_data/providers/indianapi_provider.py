@@ -8,7 +8,10 @@ from app.config import settings
 from app.market_data.enums import MarketDataSource
 from app.market_data.providers.base import MarketDataProvider
 from app.market_data.schemas import MarketDataSnapshotResponse
-
+from app.cache.service import (
+    get_provider_response_cache,
+    store_provider_response_cache,
+)
 
 class IndianAPIMarketDataProvider(MarketDataProvider):
     """Market data provider for India-focused stock/ETF data via IndianAPI."""
@@ -27,11 +30,21 @@ class IndianAPIMarketDataProvider(MarketDataProvider):
     def _fetch_json(self, path: str) -> dict | list:
         self._ensure_configured()
 
-        url = f"{self.base_url}{path}"
+        cached = get_provider_response_cache(
+            provider="INDIANAPI",
+            endpoint=path,
+            request_payload={"path": path},
+        )
+        if cached is not None:
+            return cached
+
+        base_url = self.base_url.rstrip("/")
+        url = f"{base_url}{path}"
 
         request = Request(
             url,
             headers={
+                "X-API-Key": self.api_key,
                 "x-api-key": self.api_key,
                 "accept": "application/json",
                 "User-Agent": "StockAnalysisTool/0.1",
@@ -41,18 +54,32 @@ class IndianAPIMarketDataProvider(MarketDataProvider):
         try:
             with urlopen(request, timeout=20) as response:
                 response_body = response.read().decode("utf-8")
-                return json.loads(response_body)
+                payload = json.loads(response_body)
+
+                store_provider_response_cache(
+                    provider="INDIANAPI",
+                    endpoint=path,
+                    request_payload={"path": path},
+                    response_payload=payload,
+                    request_key=path,
+                    ttl_seconds=86400,
+                )
+
+                return payload
+
         except HTTPError as exc:
-            error_body = exc.read().decode("utf-8")
+            error_body = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(
                 f"IndianAPI HTTP error {exc.code}: {error_body}"
             ) from exc
+
         except URLError as exc:
             raise RuntimeError(
                 f"IndianAPI connection error: {exc.reason}"
             ) from exc
+
         except json.JSONDecodeError as exc:
-            raise RuntimeError("IndianAPI returned invalid JSON") from exc
+            raise RuntimeError("IndianAPI returned invalid JSON") from exc             
 
     def _to_float(self, value) -> float | None:
         if value is None:

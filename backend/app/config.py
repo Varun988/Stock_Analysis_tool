@@ -39,6 +39,21 @@ class Settings(BaseSettings):
     serpapi_api_key: str | None = None
     serpapi_base_url: str = "https://serpapi.com/search.json"
 
+#   AI cost control
+    ai_cost_mode: str = "LOW"
+    ai_max_calls_per_upload: int = 3
+    ai_max_input_chars_per_call: int = 6000
+    ai_enable_research_summary: bool = False
+    ai_enable_candidate_resolution: bool = False
+    ai_enable_recommendation_explanation: bool = True
+    ai_enable_unstructured_extraction: bool = True
+
+    # Cache/version control
+    instrument_resolution_cache_version: str = "instrument_resolution_v1"
+    provider_cache_version: str = "provider_cache_v1"
+    ai_cache_version: str = "ai_cache_v1"
+    cache_revalidate_stale_records: bool = True
+
     class Config:
         env_file = ".env"
 

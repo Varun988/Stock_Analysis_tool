@@ -6,7 +6,9 @@ from google import genai
 from app.ai_engine.providers.base import AIExplanationProvider
 from app.ai_engine.schemas import AIExplanationRequest, AIExplanationResponse
 from app.config import settings
-
+import time
+from app.ai_engine.cost_guard import assert_ai_call_allowed, build_ai_request_hash
+from app.cache.service import log_ai_call
 
 class GeminiAIExplanationProvider(AIExplanationProvider):
     """Gemini-powered AI explanation provider."""
@@ -132,12 +134,38 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
         client = genai.Client(api_key=settings.gemini_api_key)
         prompt = self._build_prompt(request)
 
+        purpose = "RECOMMENDATION_EXPLANATION"
+        request_hash = build_ai_request_hash(
+            {
+                "purpose": purpose,
+                "provider": "GEMINI",
+                "model": settings.gemini_model,
+                "prompt": prompt,
+            }
+        )
+
+        assert_ai_call_allowed(purpose=purpose, prompt_text=prompt)
+        start_time = time.perf_counter()
+
         try:
             response = client.models.generate_content(
                 model=settings.gemini_model,
                 contents=prompt,
             )
         except Exception as exc:
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            log_ai_call(
+                provider="GEMINI",
+                model=settings.gemini_model,
+                purpose=purpose,
+                request_hash=request_hash,
+                input_text=prompt,
+                output_text="",
+                cache_hit=False,
+                status="ERROR",
+                error_message=str(exc),
+                latency_ms=latency_ms,
+            )
             raise RuntimeError(
                 f"Gemini explanation generation failed: {exc}"
             ) from exc
@@ -147,7 +175,33 @@ class GeminiAIExplanationProvider(AIExplanationProvider):
         response_text = getattr(response, "text", None)
 
         if not response_text:
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            log_ai_call(
+                provider="GEMINI",
+                model=settings.gemini_model,
+                purpose=purpose,
+                request_hash=request_hash,
+                input_text=prompt,
+                output_text="",
+                cache_hit=False,
+                status="ERROR",
+                error_message="Gemini returned an empty response.",
+                latency_ms=latency_ms,
+            )
             raise RuntimeError("Gemini returned an empty response.")
+
+        latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        log_ai_call(
+            provider="GEMINI",
+            model=settings.gemini_model,
+            purpose=purpose,
+            request_hash=request_hash,
+            input_text=prompt,
+            output_text=response_text,
+            cache_hit=False,
+            status="SUCCESS",
+            latency_ms=latency_ms,
+        )
 
         parsed_response = self._parse_response_text(response_text)
 
